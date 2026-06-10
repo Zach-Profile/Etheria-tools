@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Etheria Blocks | Device v2.2.0</title>
+    <style>
+        body { margin: 0; background: #000; color: #00ff66; font-family: 'Courier New', monospace; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        
+        #etheria-device { 
+            width: 1200px; /* Expanded for 3 columns */
+            height: 90vh; 
+            background: #050505; 
+            border: 4px solid #00ff66; 
+            border-radius: 12px; 
+            padding: 12px; 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: row; 
+            gap: 12px; 
+            position: relative; 
+        }
+
+        /* Left and Right Control Panels */
+        .side-panel { 
+            width: 260px; 
+            background: #111; 
+            border-radius: 6px; 
+            border: 1px solid #333; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        #etheria-screen { 
+            flex: 1; 
+            border: 3px solid #00ff66; 
+            background: #000; 
+            border-radius: 6px; 
+            display: flex;
+            flex-direction: column; 
+            overflow: hidden; 
+            position: relative;
+        }
+
+        #device-header { 
+            position: absolute; top: 15px; left: 0; width: 100%; text-align: center; 
+            font-size: 18px; margin: 0; z-index: 30; pointer-events: none; 
+            text-transform: uppercase; color: #fff; text-shadow: 0 0 5px #00ff66; 
+            letter-spacing: 4px; padding-top: 5px;
+        }
+
+        /* Styling for the Set Switcher buttons at the top of the left panel */
+.set-btn {
+    padding: 12px !important;    /* This makes the button much taller */
+    font-size: 14px !important;   /* Larger font for better readability */
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    width: 100%;                  /* Ensures they fill the side panel width */
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Optional: Add a hover state so they feel interactive */
+.set-btn:hover {
+    background: #1a1a1a !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+
+        /* Dialpad & Color Grid */
+        #dialpad, #color-grid { display: grid; gap: 4px; width: 100%; }
+        #dialpad.set0 { grid-template-columns: repeat(5, 1fr); }
+        #dialpad.set1 { grid-template-columns: repeat(4, 1fr); }
+        #color-grid { grid-template-columns: repeat(6, 1fr); }
+
+        .btn, .color-btn { 
+            aspect-ratio: 1/1; background: #1a1a1a; border: 1px solid #333; 
+            color: #fff; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; font-size: 10px; border-radius: 2px; text-decoration: none;
+        }
+        .btn:hover, .color-btn:hover { border-color: #00ff66; }
+        .btn.active { background: #00ff66; color: #000; box-shadow: 0 0 8px #00ff66; }
+
+        /* Color Button Specifics */
+        .color-btn span { pointer-events: none; text-shadow: 1px 1px 2px #000; }
+
+#container { 
+            flex: 1; 
+            width: 100%; 
+            position: relative; 
+            min-height: 0; /* This is the "magic" line that prevents it from overflowing */
+        }
+        #compass-container { position: absolute; top: 10px; right: 10px; width: 80px; height: 80px; z-index: 10; background: rgba(0, 10, 0, 0.8); border: 1px solid #00ff66; border-radius: 6px; }
+
+#data-panel { 
+            background: #050505; 
+            border-top: 2px solid #00ff66; 
+            padding: 10px; 
+            width: 100%; 
+            z-index: 30; 
+            box-sizing: border-box;
+            flex-shrink: 0; /* Prevents the panel from being squashed */
+        }
+        .data-label { font-size: 10px; color: #fff; border-left: 4px solid #fff; padding-left: 8px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+.data-value { 
+            font-size: 9px; 
+            color: #00ff66; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); 
+            gap: 2px; 
+            max-height: 60px; /* Limits the height to keep it inside the device */
+            overflow-y: auto; 
+        }
+
+        /* Masonry Nudges for Dialpad */
+/* Masonry Nudges for Dialpad - UPDATED: Aligned Left */
+        #dialpad.set0 .btn:nth-child(31),
+        #dialpad.set0 .btn:nth-child(32),
+        #dialpad.set1 .btn:nth-child(17),
+        #dialpad.set1 .btn:nth-child(18) { 
+            grid-column-start: auto; 
+            transform: none; 
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #00ff66; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="etheria-device">
+        <div class="side-panel">
+<div id="set-selector" style="display:flex; flex-direction:column; gap:5px;">
+    <button id="set0-nav" class="set-btn active" onclick="window.switchSet(0)" 
+            style="background:#000; color:#00ff66; border:1px solid #00ff66; cursor:pointer;">
+        SET 0 (v0.9/v1.0)
+    </button>
+    
+    <button id="set1-nav" class="set-btn" onclick="window.switchSet(1)" 
+            style="background:#000; color:#888; border:1px solid #444; cursor:pointer;">
+        SET 1 (v1.1/v1.2)
+    </button>
+</div>
+            <div id="dialpad"></div>
+        </div>
+
+        <div id="etheria-screen">
+            <h1 id="device-header">Etheria Blocks</h1>
+            <div id="compass-container"><canvas id="compass-canvas" width="80" height="80"></canvas></div>
+            <div id="container"></div>
+            <div id="data-panel">
+                <div class="data-label">Occupies</div>
+                <div id="occupies-text" class="data-value">--</div>
+                <div style="height:8px;"></div>
+                <div class="data-label">Attaches To</div>
+                <div id="attaches-text" class="data-value">--</div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div style="font-size:15px; text-align:center; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">COLOR INDEX</div>
+            <div id="color-grid"></div>
+        </div>
+    </div>
+
+<script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // Data Libraries
+    const library = [["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7"],["0","0","0","0","1","0","1","2","0","1","3","0","2","4","0","2","5","0","3","6","0","3","7","0"],["0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0","0"],["0","0","0","-1","1","0","-1","2","0","-2","3","0","-2","4","0","-3","5","0","-3","6","0","-4","7","0"],["0","0","0","1","0","0","1","1","0","2","1","0","3","2","0","4","2","0","4","3","0","5","3","0"],["0","0","0","-1","0","0","-2","1","0","-3","1","0","-3","2","0","-4","2","0","-5","3","0","-6","3","0"],["0","0","0","1","0","0","0","0","1","1","0","1","0","0","2","1","0","2","0","0","3","1","0","3"],["0","0","0","0","1","0","0","0","1","0","1","1","0","0","2","0","1","2","0","0","3","0","1","3"],["0","0","0","-1","1","0","0","0","1","-1","1","1","0","0","2","-1","1","2","0","0","3","-1","1","3"],["0","0","0","0","1","0","1","2","0","1","3","0","0","0","1","0","1","1","1","2","1","1","3","1"],["0","0","0","1","0","0","2","0","0","3","0","0","0","0","1","1","0","1","2","0","1","3","0","1"],["0","0","0","-1","1","0","-1","2","0","-2","3","0","0","0","1","-1","1","1","-1","2","1","-2","3","1"],["0","0","0","1","0","0","1","1","0","2","1","0","0","0","1","1","0","1","1","1","1","2","1","1"],["0","0","0","-1","0","0","-2","1","0","-3","1","0","0","0","1","-1","0","1","-2","1","1","-3","1","1"],["0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0"],["0","0","0","-1","1","0","0","2","0","-1","3","0","0","4","0","-1","5","0","0","6","0","-1","7","0"],["0","0","0","0","1","0","0","2","0","0","3","0","0","0","1","0","1","1","0","2","1","0","3","1"],["0","0","0","-1","1","0","0","2","0","-1","3","0","0","0","1","-1","1","1","0","2","1","-1","3","1"],["0","0","0","0","1","0","0","1","1","1","2","1","1","2","2","1","3","2","1","3","3","2","4","3"],["0","0","0","1","0","0","1","0","1","2","0","1","2","0","2","3","0","2","3","0","3","4","0","3"],["0","0","0","0","-1","0","0","-1","1","1","-2","1","1","-2","2","1","-3","2","1","-3","3","2","-4","3"],["0","0","0","-1","-1","0","-1","-1","1","-1","-2","1","-1","-2","2","-2","-3","2","-2","-3","3","-2","-4","3"],["0","0","0","-1","0","0","-1","0","1","-2","0","1","-2","0","2","-3","0","2","-3","0","3","-4","0","3"],["0","0","0","-1","1","0","-1","1","1","-1","2","1","-1","2","2","-2","3","2","-2","3","3","-2","4","3"],["0","0","0","0","0","1","0","0","2","0","1","2","1","2","2","1","3","2","1","3","1","1","3","0"],["0","0","0","0","0","1","0","0","2","1","0","2","2","0","2","3","0","2","3","0","1","3","0","0"],["0","0","0","0","0","1","0","0","2","0","-1","2","1","-2","2","1","-3","2","1","-3","1","1","-3","0"],["0","0","0","0","0","1","0","0","2","1","0","2","1","1","2","1","2","2","1","2","1","1","2","0"],["0","0","0","0","0","1","0","0","2","-1","-1","2","0","-2","2","1","-2","2","1","-2","1","1","-2","0"],["0","0","0","0","0","1","0","0","2","-1","0","2","-2","-1","2","-1","-2","2","-1","-2","1","-1","-2","0"],["0","0","0","0","0","1","0","0","2","0","1","2","0","2","2","-1","2","2","-1","2","1","-1","2","0"],["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","-1","1","0","-1","-1","0","1","0","0"]];
+    const attachesToLib = [["0","0","-1","0","0","8","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","-1","1","2","-1","1","3","-1","2","4","-1","2","5","-1","3","6","-1","3","7","-1","0","0","1","0","1","1","1","2","1","1","3","1","2","4","1","2","5","1","3","6","1","3","7","1"],["0","0","-1","1","0","-1","2","0","-1","3","0","-1","4","0","-1","5","0","-1","6","0","-1","7","0","-1","0","0","1","1","0","1","2","0","1","3","0","1","4","0","1","5","0","1","6","0","1","7","0","1"],["0","0","-1","-1","1","-1","-1","2","-1","-2","3","-1","-2","4","-1","-3","5","-1","-3","6","-1","-4","7","-1","0","0","1","-1","1","1","-1","2","1","-2","3","1","-2","4","1","-3","5","1","-3","6","1","-4","7","1"],["0","0","-1","1","0","-1","1","1","-1","2","1","-1","3","2","-1","4","2","-1","4","3","-1","5","3","-1","0","0","1","1","0","1","1","1","1","2","1","1","3","2","1","4","2","1","4","3","1","5","3","1"],["0","0","-1","-1","0","-1","-2","1","-1","-3","1","-1","-3","2","-1","-4","2","-1","-5","3","-1","-6","3","-1","0","0","1","-1","0","1","-2","1","1","-3","1","1","-3","2","1","-4","2","1","-5","3","1","-6","3","1"],["0","0","-1","1","0","-1","0","0","4","1","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","-1","0","0","4","0","1","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","1","-1","0","0","4","-1","1","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","-1","1","2","-1","1","3","-1","0","0","2","0","1","2","1","2","2","1","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","1","0","-1","2","0","-1","3","0","-1","0","0","2","1","0","2","2","0","2","3","0","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","1","-1","-1","2","-1","-2","3","-1","0","0","2","-1","1","2","-1","2","2","-2","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","1","0","-1","1","1","-1","2","1","-1","0","0","2","1","0","2","1","1","2","2","1","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","0","-1","-2","1","-1","-3","1","-1","0","0","2","-1","0","2","-2","1","2","-3","1","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","-1","0","2","-1","0","3","-1","0","4","-1","0","5","-1","0","6","-1","0","7","-1","0","0","1","0","1","1","0","2","1","0","3","1","0","4","1","0","5","1","0","6","1","0","7","1"],["0","0","-1","-1","1","-1","0","2","-1","-1","3","-1","0","4","-1","-1","5","-1","0","6","-1","-1","7","-1","0","0","1","-1","1","1","0","2","1","-1","3","1","0","4","1","-1","5","1","0","6","1","-1","7","1"],["0","0","-1","0","1","-1","0","2","-1","0","3","-1","0","0","2","0","1","2","0","2","2","0","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","1","-1","0","2","-1","-1","3","-1","0","0","2","-1","1","2","0","2","2","-1","3","1","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","-1","1","2","0","1","3","1","2","4","2","0","0","1","0","1","2","1","2","3","1","3","4","2","4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","1","0","-1","2","0","0","3","0","1","4","0","2","0","0","1","1","0","2","2","0","3","3","0","4","4","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","-1","-1","1","-2","0","1","-3","1","2","-4","2","0","0","1","0","-1","2","1","-2","3","1","-3","4","2","-4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","-1","-1","-1","-2","0","-2","-3","1","-2","-4","2","0","0","1","-1","-1","2","-1","-2","3","-2","-3","4","-2","-4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","0","-1","-2","0","0","-3","0","1","-4","0","2","0","0","1","-1","0","2","-2","0","3","-3","0","4","-4","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","1","-1","-1","2","0","-2","3","1","-2","4","2","0","0","1","-1","1","2","-1","2","3","-2","3","4","-2","4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","1","1","2","1","1","3","-1","0","0","3","0","1","3","1","2","3","1","3","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","1","0","1","2","0","1","3","0","-1","0","0","3","1","0","3","2","0","3","3","0","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","-1","1","1","-2","1","1","-3","-1","0","0","3","0","-1","3","1","-2","3","1","-3","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","1","0","1","1","1","1","1","2","-1","0","0","3","1","0","3","1","1","3","1","2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","-1","1","0","-2","1","1","-2","-1","0","0","3","-1","-1","3","0","-2","3","1","-2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","0","1","-2","-1","1","-1","-2","-1","0","0","3","-1","0","3","-2","-1","3","-1","-2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","0","1","1","0","2","1","-1","2","-1","0","0","3","0","1","3","0","2","3","-1","2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],["0","0","-1","-1","1","-1","-1","-1","-1","1","0","-1","0","0","5","-1","1","1","-1","-1","1","1","0","1","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]];
+    const set1Map = [0, 2, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 19, 22];
+    const set1Unique = [["0", "0", "0", "0", "-1", "0", "0", "-1", "1", "0", "-2", "1", "0", "-2", "2", "0", "-3", "2", "0", "-3", "3", "0", "-4", "3"], ["0", "0", "0", "0", "1", "0", "0", "1", "1", "0", "2", "1", "0", "2", "2", "0", "3", "2", "0", "3", "3", "0", "4", "3"]];
+    const set1AttachesUnique = [
+        ["0","0","-1","0","-1","-1","0","-2","0","0","-3","1","0","-4","2","0","0","1","0","-1","2","0","-2","3","0","-3","4","0","-4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"], 
+        ["0","0","-1","0","1","-1","0","2","0","0","3","1","0","4","2","0","0","1","0","1","2","0","2","3","0","3","4","0","4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]
+    ];
+
+    const colors = ["000000","000033","000066","000099","0000CC","0000FF","003300","003333","003366","003399","0033CC","0033FF","006600","006633","006666","006699","0066CC","0066FF","009900","009933","009966","009999","0099CC","0099FF","00CC00","00CC33","00CC66","00CC99","00CCCC","00CCFF","00FF00","00FF33","00FF66","00FF99","00FFCC","00FFFF","330000","330033","330066","330099","3300CC","3300FF","333300","333333","333366","333399","3333CC","3333FF","336600","336633","336666","336699","3366CC","3366FF","339900","339933","339966","339999","3399CC","3399FF","33CC00","33CC33","33CC66","33CC99","33CCCC","33CCFF","33FF00","33FF33","33FF66","33FF99","33FFCC","33FFFF","660000","660033","660066","660099","6600CC","6600FF","663300","663333","663366","663399","6633CC","6633FF","666600","666633","666666","666699","6666CC","6666FF","669900","669933","669966","669999","6699CC","6699FF","66CC00","66CC33","66CC66","66CC99","66CCCC","66CCFF","66FF00","66FF33","66FF66","66FF99","66FFCC","66FFFF","990000","990033","990066","990099","9900CC","9900FF","993300","993333","993366","993399","9933CC","9933FF","996600","996633","996666","996699","9966CC","9966FF","999900","999933","999966","999999","9999CC","9999FF","99CC00","99CC33","99CC66","99CC99","99CCCC","99CCFF","99FF00","99FF33","99FF66","99FF99","99FFCC","99FFFF","CC0000","CC0033","CC0066","CC0099","CC00CC","CC00FF","CC3300","CC3333","CC3366","CC3399","CC33CC","CC33FF","CC6600","CC6633","CC6666","CC6699","CC66CC","CC66FF","CC9900","CC9933","CC9966","CC9999","CC99CC","CC99FF","CCCC00","CCCC33","CCCC66","CCCC99","CCCCCC","CCCCFF","CCFF00","CCFF33","CCFF66","CCFF99","CCFFCC","CCFFFF","FF0000","FF0033","FF0066","FF0099","FF00CC","FF00FF","FF3300","FF3333","FF3366","FF3399","FF33CC","FF33FF","FF6600","FF6633","FF6666","FF6699","FF66CC","FF66FF","FF9900","FF9933","FF9966","FF9999","FF99CC","FF99FF","FFCC00","FFCC33","FFCC66","FFCC99","FFCCCC","FFCCFF","FFFF00","FFFF33","FFFF66","FFFF99","FFFFCC","FFFFFF"];
+
+    let currentSet = 0;
+    let currentColor = 0xc4c4c4;
+    let currentId = 0;
+
+    const container = document.getElementById('container');
+    const compCtx = document.getElementById('compass-canvas').getContext('2d');
+    const scene = new THREE.Scene();
+    
+    let rect = container.getBoundingClientRect();
+    const camera = new THREE.PerspectiveCamera(30, rect.width / rect.height, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(rect.width, rect.height);
+    container.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    const R = 1 / Math.sqrt(3); 
+    const hexGeo = new THREE.CylinderGeometry(R, R, 1, 6);
+    let activeBlock = null;
+
+    function drawMiniMap(occupancy) {
+        const cx = 40, cy = 40, scale = 3.5;
+        compCtx.clearRect(0,0,80,80);
+        for (let r = -12; r <= 12; r++) {
+            for (let q = -12; q <= 12; q++) {
+                let mirroredQ = -q, xPos = mirroredQ * 1.0;
+                if (Math.abs(r) % 2 === 1) xPos -= 0.5;
+                const px = cx + (-xPos * scale), py = cy + (-r * 0.9 * scale);
+                const isOccupied = occupancy.some(o => o.q === q && o.r === r);
+                const isAnchor = (q === 0 && r === 0);
+                compCtx.beginPath();
+                for(let i=0; i<6; i++) {
+                    const angle = (i * 60 - 30) * Math.PI / 180;
+                    const tx = px + (scale * 0.6) * Math.cos(angle), ty = py + (scale * 0.6) * Math.sin(angle);
+                    if(i === 0) compCtx.moveTo(tx, ty); else compCtx.lineTo(tx, ty);
+                }
+                compCtx.closePath();
+                if (isAnchor) { compCtx.fillStyle = '#FFD700'; compCtx.fill(); }
+                else if (isOccupied) { compCtx.fillStyle = '#00ff66'; compCtx.fill(); }
+                else { compCtx.strokeStyle = 'rgba(0, 255, 102, 0.1)'; compCtx.lineWidth = 0.2; compCtx.stroke(); }
+            }
+        }
+    }
+
+    const formatCoords = (arr) => {
+        let html = "";
+        for (let i = 0; i < arr.length; i += 3) {
+            if (i > 0 && arr[i] === "0" && arr[i+1] === "0" && arr[i+2] === "0") break;
+            html += `<span style="border-right: 1px solid #222; margin-bottom: 2px; padding: 0 4px;">${arr[i]},${arr[i+1]},${arr[i+2]}</span>`;
+        }
+        return html || "NONE";
+    };
+
+    window.updateColor = function(hexStr) {
+        currentColor = parseInt(hexStr, 16);
+        window.build(currentId); // Rebuild with new color
+    };
+
+window.build = function(id) {
+        currentId = id;
+        if (activeBlock) scene.remove(activeBlock);
+        activeBlock = new THREE.Group();
+        scene.add(activeBlock);
+
+        let data = (currentSet === 0) ? library[id] : (id < 16 ? library[set1Map[id]] : set1Unique[id-16]);
+        let attachesTo = (currentSet === 0) ? (attachesToLib[id] || []) : (id === 15 ? attachesToLib[0] : (id >= 16 ? set1AttachesUnique[id-16] : (attachesToLib[set1Map[id]] || ["N/A"])));
+
+        document.getElementById('occupies-text').innerHTML = formatCoords(data);
+        document.getElementById('attaches-text').innerHTML = formatCoords(attachesTo);
+
+        const occupancy = [];
+        const dynamicMat = new THREE.MeshPhongMaterial({ color: currentColor, shininess: 50 });
+        const dynamicWire = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+
+        for (let i = 0; i < data.length; i += 3) {
+            const q = parseInt(data[i]), r = parseInt(data[i+1]), y = parseInt(data[i+2]);
+            occupancy.push({q, r});
+            let mirroredQ = -q, xCalc = mirroredQ * 1.0;
+            if (Math.abs(r) % 2 === 1) xCalc -= 0.5;
+            
+            const mesh = new THREE.Mesh(hexGeo, dynamicMat);
+            const wire = new THREE.LineSegments(new THREE.EdgesGeometry(hexGeo), dynamicWire);
+            
+            mesh.position.set(-xCalc, y, -(r * 0.9));
+            wire.position.set(-xCalc, y, -(r * 0.9));
+            activeBlock.add(mesh, wire);
+        }
+        
+        drawMiniMap(occupancy);
+
+        // --- CAMERA RESET LOGIC ---
+        // 1. Reset the focal point to the center of the block
+        controls.target.set(0, 3.5, 0); 
+        // 2. Move camera to the 30% zoomed-out position (19.5)
+        camera.position.set(0, 17.5, 19.5); 
+        // 3. Update controls to apply the changes
+        controls.update();
+
+        document.querySelectorAll('.btn').forEach(b => b.classList.toggle('active', b.dataset.id == id));
+    };
+
+    window.switchSet = function(setNum) {
+        currentSet = setNum;
+        document.getElementById('set0-nav').style.borderColor = setNum === 0 ? '#00ff66' : '#444';
+        document.getElementById('set0-nav').style.color = setNum === 0 ? '#00ff66' : '#888';
+        document.getElementById('set1-nav').style.borderColor = setNum === 1 ? '#00ff66' : '#444';
+        document.getElementById('set1-nav').style.color = setNum === 1 ? '#00ff66' : '#888';
+        renderDialpad();
+        window.build(0); 
+    };
+
+    function renderDialpad() {
+        const pad = document.getElementById('dialpad');
+        pad.innerHTML = '';
+        pad.className = (currentSet === 0) ? 'set0' : 'set1';
+        const count = (currentSet === 0) ? 32 : 18;
+        for (let i = 0; i < count; i++) {
+            const b = document.createElement('div');
+            b.className = 'btn'; b.innerText = i; b.dataset.id = i;
+            b.onclick = () => window.build(i);
+            pad.appendChild(b);
+        }
+    }
+
+    function renderColors() {
+        const grid = document.getElementById('color-grid');
+        colors.forEach((c, i) => {
+            const b = document.createElement('div');
+            b.className = 'color-btn';
+            b.style.backgroundColor = '#' + c;
+            const indexCalc = i - 128;
+            
+            // Determine text color for contrast
+            const r = parseInt(c.substr(0,2),16);
+            const g = parseInt(c.substr(2,2),16);
+            const b_val = parseInt(c.substr(4,2),16);
+            const brightness = (r*299 + g*587 + b_val*114) / 1000;
+            b.style.color = brightness > 125 ? 'black' : 'white';
+            
+            b.innerHTML = `<span>${indexCalc}</span>`;
+            b.onclick = () => window.updateColor(c);
+            grid.appendChild(b);
+        });
+    }
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const l = new THREE.DirectionalLight(0xffffff, 1);
+    l.position.set(5, 10, 5); scene.add(l);
+
+    function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+    
+    window.addEventListener('resize', () => {
+        rect = container.getBoundingClientRect();
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(rect.width, rect.height);
+    });
+
+    renderDialpad(); 
+    renderColors();
+    camera.position.set(0, 19, 15);
+    window.build(0); 
+    animate();
+</script>
+</body>
+</html>
