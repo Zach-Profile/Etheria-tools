@@ -1,0 +1,3005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Etheria | Map</title>
+    <style>
+        :root {
+            --sidebar-width: 25%;
+            --primary-green: #4caf50;
+            --peak-gold: #ffff00;
+            --pit-red: #ff0a0a;
+            --coast-sand: #e3c69a;
+            --select-cyan: #00ffff;
+            --neutral-orange: #ffa500;
+        }
+
+        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
+
+        /* Modal / Pop-up Styling */
+        #modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); z-index: 2000; align-items: center; justify-content: center;
+        }
+        #modal-content {
+            width: 60%; max-height: 80%; background: #111; border: 1px solid var(--primary-green);
+            color: #ccc; padding: 30px; overflow-y: auto; position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        #modal-content h2 { color: var(--primary-green); margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        #modal-content p { line-height: 1.6; font-size: 14px; }
+        
+        /* Tab Styling */
+        .tab-bar { display: flex; border-bottom: 1px solid #333; margin-bottom: 20px; gap: 5px; }
+        .tab-btn { 
+            background: #222; color: #888; border: 1px solid #333; border-bottom: none; 
+            padding: 10px 20px; cursor: pointer; font-family: inherit; font-size: 12px;
+        }
+        .tab-btn.active { background: #111; color: var(--primary-green); border-color: var(--primary-green); position: relative; top: 1px; }
+        
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* Nested Tabs for Onchain Data */
+        .sub-tab-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #1a1a1a; padding: 5px; }
+        .sub-tab-btn { 
+            background: none; border: 1px solid #444; color: #aaa; padding: 5px 12px; 
+            cursor: pointer; font-size: 11px; font-family: inherit; width: auto;
+        }
+        .sub-tab-btn.active { border-color: var(--primary-green); color: white; background: #333; }
+
+        .close-modal { 
+            background: #222; color: white; border: 1px solid #444; padding: 8px 15px; 
+            cursor: pointer; font-family: inherit; margin-top: 20px; float: right; width: auto; text-align: center;
+        }
+        .close-modal:hover { background: #333; }
+
+        #menu-toggle {
+            display: none; position: absolute; top: 15px; left: 15px; z-index: 1100;
+            background: rgba(17, 17, 17, 0.9); color: white; border: 1px solid #444;
+            padding: 10px 15px; font-family: inherit; font-size: 12px; cursor: pointer; letter-spacing: 1px;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width); height: 100%; background: #111; border-right: 1px solid #333;
+            color: white; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box;
+            overflow-y: auto; z-index: 1000; transition: transform 0.3s ease;
+        }
+
+        .logo-container { padding: 10px 0 20px 0; border-bottom: 2px solid #222; margin-bottom: 15px; text-align: center; }
+        .logo-container img { max-width: 80%; height: auto; filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2)); }
+
+        #map-container { width: calc(100% - var(--sidebar-width)); height: 100%; position: relative; }
+        h3 { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 15px; margin-bottom: 8px; letter-spacing: 1px; display: flex; align-items: center; }
+
+        .info-icon {
+            display: inline-block; width: 14px; height: 14px; background: #333; color: #999;
+            border-radius: 50%; text-align: center; line-height: 14px; font-size: 10px;
+            margin-left: 8px; cursor: help; position: relative; text-transform: none;
+        }
+
+        .code-container {
+            background-color: #141414;
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            
+            /* The Scrollable Magic */
+            max-height: 400px; 
+            overflow: auto;
+            
+            /* Keeping code inside the borders */
+            font-family: "Courier New", Courier, monospace;
+            white-space: pre-wrap; 
+            word-break: break-all;
+            line-height: .01;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        p {
+            margin: 0;
+            padding: 0;
+            min-height: 1em;
+        }
+        .footer-content {
+            margin-top: 20px;
+            width: 90%;
+            max-width: 800px;
+            text-align: left;
+            color: #ffffff;
+        }
+        .tooltip-text {
+            visibility: hidden; width: 200px; background-color: #222; color: #ccc; text-align: left;
+            border: 1px solid #444; padding: 10px; position: absolute; z-index: 1100; left: 120%;
+            top: 0; font-size: 10px; line-height: 1.4; letter-spacing: 0; box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
+        .info-icon:hover .tooltip-text { visibility: visible; }
+
+        .modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.7); /* Semi-transparent black */
+            overflow: auto; /* Enable scroll if needed */
+        }
+
+        
+
+        button { 
+            background: #1a1a1a; color: #ffffff; border: 1px solid #333; 
+            padding: 8px; cursor: pointer; font-family: inherit; font-weight: bold; width: 100%;
+            transition: all 0.2s; margin-bottom: 4px; text-align: center; font-size: 10px;
+        }
+        button:hover { background: #222; border-color: #555; }
+        button.active { background: var(--primary-green); color: white; border-color: var(--primary-green); }
+        
+        #peaks-btn.active { background: var(--peak-gold); color: black; border-color: var(--peak-gold); }
+        #pits-btn.active { background: var(--pit-red); color: white; border-color: var(--pit-red); }
+        #hscore-btn.active { background: var(--neutral-orange); color: black; border-color: var(--neutral-orange); }
+        
+        label { display: block; font-size: 11px; margin-bottom: 5px; font-weight: bold; }
+        
+        input[type=range] { 
+            width: 100%; cursor: pointer; appearance: none; height: 8px; background: #333; outline: none; border-radius: 4px; margin-bottom: 10px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none; width: 14px; height: 14px; background: white; border: 2px solid #000; border-radius: 50%; cursor: pointer;
+        }
+
+        #info-popup { 
+            position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.9); color: white; 
+            padding: 12px; border: 1px solid var(--primary-green); display: none; min-width: 140px; 
+            z-index: 30; pointer-events: none; 
+        }
+        
+
+        @media (max-width: 768px) {
+            #menu-toggle { display: block; }
+            #sidebar { position: fixed; width: 100%; left: 0; top: 0; transform: translateX(-100%); border-right: none; }
+            #sidebar.mobile-open { transform: translateX(0); }
+            #map-container { width: 100%; }
+            #modal-content { width: 85%; }
+        }
+
+         a {
+        color: #17ff17; /* Use a Hex code, RGB, or name like 'blue' */
+        text-decoration: none; /* Optional: removes the underline */
+        }
+
+        input[type=range].hscore-gradient {
+            background: linear-gradient(to right, var(--pit-red) 0%, var(--neutral-orange) 50%, var(--peak-gold) 100%) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="modal-overlay">
+            
+
+        <div id="modal-content">
+            <h1>HISTORY OF ETHERIA</h1>
+            
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="openTab(event, 'Summary')">Summary</button>
+                <button class="tab-btn" onclick="openTab(event, 'OnchainData')">Onchain Data</button>
+            </div>
+
+            <div id="Summary" class="tab-pane active">
+                <p><strong>Etheria</strong> is the first decentralized virtual world and limited-supply collectible launched on the Ethereum blockchain. It was created by Cyrus Adkisson, an early founding investor in the Ethereum ICO. Its deployment marked several significant milestones in blockchain history very early on, such as onchain generativeness, onchain marketplaces using offering systems, onchain physics, onchain assets with several unique traits, onchain sculpting of uniquely shaped blocks, and more. The first functional version, v0.9, was deployed on October 19, 2015. In total, four unique versions were deployed: v0.9 (Oct 19), v1.0 (Oct 22), v1.1 (Oct 29), and v1.2 (Nov 1). Each version is visually similar but technically distinct, carrying its own specific history and on-chain activity. Notably, Etheria predates the ERC-721 NFT standard, the ERC-20 token standard, and the very concept of "NFTs" as they are known today. It established its presence long before other popular projects such as CryptoPunks, MoonCats, CryptoKitties, Decentraland, Autoglyphs, Doodles, Bored Ape Yacht Club, and Pudgy Penguins.</p><br>
+                <p>The project consists of a hexagonal grid of 1,089 tiles, each representing a piece of interactive digital land; 457 of these are ownable, while 632 are not. At the time of deployment, the cost to purchase a tile was 1 ETH - approximately one dollar at the time. Due to the nascent market and a general lack of Ethereum awareness in 2015, only a few dozen tiles were sold across all versions, and an even smaller number of users actively farmed or edited blocks on their tiles. A defining moment occurred on November 13, 2015, when Cyrus presented Etheria at Devcon1 in London to a core group of Ethereum’s earliest developers and investors. To this day, the project contains historic comments from influential figures such as Vitalik Buterin, Taylor Gerring, Avsa, Joseph Lubin, Ken Erwin, Nick Johnson, and official Ethereum accounts. Following this initial period, the digital world remained largely dormant for years.</p><br>
+                <p>In early 2021, spurred by the rediscovery of early blockchain projects by "NFT archaeologists," interest in Etheria surged. This led to the rapid claiming of all remaining tiles that had sat unpurchased since 2015. Today, Etheria stands as the monument to early blockchain experimentation. With its provenance and immutable history verified directly on the Ethereum mainnet, its cultural significance is a permanent fixture of blockchain heritage.</p><br>
+                <p>The map you are currently viewing utilizes live on-chain data to visualize the unique traits of each tile, including elevation, coastal adjacency, location, and spatial relationships. Advanced metrics, such as the Tile Height Score (THS), allow for the comparison of tile statistics like never before. Please note that this interface is a work in progress, and minor errors may exist. This information does not constitute financial advice, and certain visual elements (such as colors and unit of height) may not be entirely representative of the chain. As always, please conduct your own research before making any financial or programmable decisions.</p><br>
+                <h2>Helpful Links:</h2>
+                <p><strong>Original Website: </strong><a href="https://www.etheria.world/whatis.html">etheria.world</a></p>
+                 <p><strong>Etheria X Account: </strong><a href="https://x.com/etheria_feed">x.com/etheria_feed</a></p>
+                <p><strong>Cyrus Adkisson X Account: </strong><a href="https://x.com/fivedogit">x.com/fivedogit</a></p>
+                <p><strong>About Etheria by Goatishduck: </strong><a href="https://medium.com/@goatishduck/what-is-etheria-811d6692b581">What Is Etheria?</a></p>
+                 <p><strong>Original 2016 Youtube Tutorial: </strong><a href="https://youtu.be/D-s1TBZnuEo?si=0WdvUcpJq3jc6ARz">How Etheria Works</a></p>
+                 <p><strong>Devcon1 Interview: </strong><a href="https://youtu.be/ySA0OaGaZ4Q?si=q9_Lwc-wtze-rt_O">DEVCON1 Interview</a></p>
+                <h4>Marketplaces:</h4>
+                <p><strong>Etheria v0.9 Market: </strong><a href="https://opensea.io/collection/etheria-v0pt9-2015-10-19">Opensea - Etheria v0.9</a> (Or native <a href="https://etherscan.io/address/0xe468d26721b703d224d05563cb64746a7a40e1f4#writeContract">onchain marketplace</a>)</p>
+                <p><strong>Etheria v1.0 Market: </strong><a href="https://opensea.io/collection/etheria-v1pt0-2015-10-22">Opensea - Etheria v1.0</a> (Or native <a href="https://etherscan.io/address/0xe414716f017b5c1457bf98e985bccb135dff81f2#writeContract">onchain marketplace</a>)</p>
+                <p><strong>Etheria v1.1 Market: </strong><a href="https://www.etheria.world/exchange.html?version=1.1">Custom v1.1 marketplace</a> (No native marketplace)</p>
+                <p><strong>Etheria v1.2 Market: </strong><a href="https://www.etheria.world/exchange.html?version=1.2">Custom v1.2 marketplace</a> (No native marketplace)</p>
+            </div>
+
+            <div id="OnchainData" class="tab-pane">
+                <div class="sub-tab-bar">
+                    <button class="sub-tab-btn active" onclick="openTab(event, 'v09')">Etheria v0.9</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'v10')">Etheria v1.0</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'v11')">Etheria v1.1</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'v12')">Etheria v1.2</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'MER')">MapElevationRetriever</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'BDS0')">BlockDefStorage0</button>
+                    <button class="sub-tab-btn" onclick="openTab(event, 'BDS1')">BlockDefStorage1</button>
+                </div>
+
+                <div id="v09" class="sub-tab-pane active"><p><strong>:: The first of four Etheria versions - October 19, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0xe468D26721b703D224d05563cB64746A7A40E1F4</p><br><p><Strong>Source Code:</Strong></p><div class="code-container">
+        <p>contract BlockDefStorage </p>
+        <p>{</p>
+        <p>	function getOccupies(uint8 which) public returns (int8[24])</p>
+        <p>	{}</p>
+        <p>	function getAttachesto(uint8 which) public returns (int8[48])</p>
+        <p>    {}</p>
+        <p>}</p>
+        <p></p>
+        <p>contract MapElevationRetriever </p>
+        <p>{</p>
+        <p>	function getElevation(uint8 col, uint8 row) public constant returns (uint8)</p>
+        <p>	{}</p>
+        <p>}</p>
+        <p></p>
+        <p>contract Etheria </p>
+        <p>{</p>
+        <p>    uint8 mapsize = 33;</p>
+        <p>    Tile[33][33] tiles;</p>
+        <p>    address creator;</p>
+        <p>    </p>
+        <p>    struct Tile </p>
+        <p>    {</p>
+        <p>    	address owner;</p>
+        <p>    	address[] offerers;</p>
+        <p>    	uint[] offers;</p>
+        <p>    	int8[5][] blocks; </p>
+        <p>    	uint lastfarm;</p>
+        <p>    	int8[3][] occupado;</p>
+        <p>    	string name;</p>
+        <p>    	string status;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    BlockDefStorage bds;</p>
+        <p>    MapElevationRetriever mer;</p>
+        <p>    </p>
+        <p>    function Etheria() {</p>
+        <p>    	creator = msg.sender;</p>
+        <p>    	bds = BlockDefStorage(0x782bdf7015b71b64f6750796dd087fde32fd6fdc); </p>
+        <p>    	mer = MapElevationRetriever(0x68549d7dbb7a956f955ec1263f55494f05972a6b);</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOwner(uint8 col, uint8 row) public constant returns(address)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].owner; </p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getName(uint8 col, uint8 row) public constant returns(string)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].name; </p>
+        <p>    }</p>
+        <p></p>
+        <p>    function setName(uint8 col, uint8 row, string _n) public</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 50;  </p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender)</p>
+        <p>    	{</p>
+        <p>    		whathappened = 51;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	tile.name = _n;</p>
+        <p>    	whathappened = 52;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getStatus(uint8 col, uint8 row) public constant returns(string)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].status; </p>
+        <p>    }</p>
+        <p></p>
+        <p>    function setStatus(uint8 col, uint8 row, string _s) public </p>
+        <p>    {</p>
+        <p>    	if(msg.value == 0)	</p>
+        <p>    	{</p>
+        <p>    		whathappened = 40;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(msg.value != 100000000000000000) </p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value); 		</p>
+        <p>    		whathappened = 41;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value); 		</p>
+        <p>    		whathappened = 42;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender)</p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value); 		</p>
+        <p>    		whathappened = 43;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	tile.status = _s;</p>
+        <p>    	whathappened = 44;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function farmTile(uint8 col, uint8 row) public </p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 30;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>        if(tile.owner != msg.sender)</p>
+        <p>        {</p>
+        <p>        	whathappened = 31;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        if((block.number - tile.lastfarm) &lt; 4320) </p>
+        <p>        {</p>
+        <p>        	whathappened = 32;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        bytes32 lastblockhash = block.blockhash(block.number - 1);</p>
+        <p>    	for(uint8 i = 0; i &lt; 10; i++)</p>
+        <p>    	{</p>
+        <p>            tile.blocks.length+=1;</p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][0] = int8(getUint8FromByte32(lastblockhash,i) % 32); </p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][1] = 0; </p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][2] = 0; </p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][3] = -1; </p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][4] = 0; </p>
+        <p>    	}</p>
+        <p>    	tile.lastfarm = block.number;</p>
+        <p>    	whathappened = 33;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function editBlock(uint8 col, uint8 row, uint index, int8[5] _block)  </p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 20;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>        if(tile.owner != msg.sender) </p>
+        <p>        {</p>
+        <p>        	whathappened = 21;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        if(_block[3] &lt; 0) </p>
+        <p>        {</p>
+        <p>        	whathappened = 22;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        </p>
+        <p>        _block[0] = tile.blocks[index][0]; </p>
+        <p></p>
+        <p>        int8[24] memory didoccupy = bds.getOccupies(uint8(_block[0]));</p>
+        <p>        int8[24] memory wouldoccupy = bds.getOccupies(uint8(_block[0]));</p>
+        <p>        </p>
+        <p>        for(uint8 b = 0; b &lt; 24; b+=3) </p>
+        <p>		{</p>
+        <p>			 wouldoccupy[b] = wouldoccupy[b]+_block[1];</p>
+        <p>			 wouldoccupy[b+1] = wouldoccupy[b+1]+_block[2];</p>
+        <p>			 if(wouldoccupy[1] % 2 != 0 &amp;&amp; wouldoccupy[b+1] % 2 == 0) </p>
+        <p>				 wouldoccupy[b] = wouldoccupy[b]+1; 			  </p>
+        <p>			 wouldoccupy[b+2] = wouldoccupy[b+2]+_block[3];</p>
+        <p>			 </p>
+        <p>			 didoccupy[b] = didoccupy[b]+tile.blocks[index][1];</p>
+        <p>			 didoccupy[b+1] = didoccupy[b+1]+tile.blocks[index][2];</p>
+        <p>			 if(didoccupy[1] % 2 != 0 &amp;&amp; didoccupy[b+1] % 2 == 0) </p>
+        <p>				 didoccupy[b] = didoccupy[b]+1; 					 </p>
+        <p>        		didoccupy[b+2] = didoccupy[b+2]+tile.blocks[index][3];</p>
+        <p>		}</p>
+        <p>        </p>
+        <p>        if(!isValidLocation(col,row,_block, wouldoccupy))</p>
+        <p>        {</p>
+        <p>        	return; </p>
+        <p>        }</p>
+        <p>        </p>
+        <p>     	if(tile.blocks[index][3] &gt;= 0) </p>
+        <p>     	{</p>
+        <p>          	for(uint8 l = 0; l &lt; 24; l+=3) </p>
+        <p>          	{</p>
+        <p>          		for(uint o = 0; o &lt; tile.occupado.length; o++)</p>
+        <p>          		{</p>
+        <p>          			if(didoccupy[l] == tile.occupado[o][0] &amp;&amp; didoccupy[l+1] == tile.occupado[o][1] &amp;&amp; didoccupy[l+2] == tile.occupado[o][2]) </p>
+        <p>          			{</p>
+        <p>          				tile.occupado[o][0] = wouldoccupy[l]; </p>
+        <p>          				tile.occupado[o][1] = wouldoccupy[l+1];</p>
+        <p>          				tile.occupado[o][2] = wouldoccupy[l+2];</p>
+        <p>          			}</p>
+        <p>          		}</p>
+        <p>          	}</p>
+        <p>     	}</p>
+        <p>     	else </p>
+        <p>     	{</p>
+        <p>     		for(uint8 ll = 0; ll &lt; 24; ll+=3) </p>
+        <p>          	{</p>
+        <p>     			tile.occupado.length++;</p>
+        <p>     			tile.occupado[tile.occupado.length-1][0] = wouldoccupy[ll];</p>
+        <p>     			tile.occupado[tile.occupado.length-1][1] = wouldoccupy[ll+1];</p>
+        <p>     			tile.occupado[tile.occupado.length-1][2] = wouldoccupy[ll+2];</p>
+        <p>          	}</p>
+        <p>     	}</p>
+        <p>     	tile.blocks[index] = _block;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>        </p>
+        <p>    function getBlocks(uint8 col, uint8 row) public constant returns (int8[5][])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].blocks; </p>
+        <p>    }</p>
+        <p>   </p>
+        <p>    function makeOffer(uint8 col, uint8 row)</p>
+        <p>    {</p>
+        <p>    	if(msg.value == 0) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 1;</p>
+        <p>    		return;</p>
+        <p>    	}	</p>
+        <p>    	</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 2;</p>
+        <p>    		msg.sender.send(msg.value); 		</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner == address(0x0000000000000000000000000000000000000000))			</p>
+        <p>    	{     </p>
+        <p>    		if(msg.value != 1000000000000000000 || mer.getElevation(col,row) &lt; 125)	</p>
+        <p>    		{</p>
+        <p>    			msg.sender.send(msg.value); 	 									</p>
+        <p>    			whathappened = 3;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{	</p>
+        <p>    			creator.send(msg.value);  		 								</p>
+        <p>    			tile.owner = msg.sender; 								</p>
+        <p>    			whathappened = 4;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    	}	</p>
+        <p>    	else 																		</p>
+        <p>    	{</p>
+        <p>    		if(tile.owner == msg.sender || msg.value &lt; 10000000000000000 || msg.value &gt; 1000000000000000000000000 || tile.offerers.length &gt;= 10) </p>
+        <p>    		{</p>
+        <p>    			msg.sender.send(msg.value); 	 									</p>
+        <p>    			whathappened = 5;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{	</p>
+        <p>    			for(uint8 i = 0; i &lt; tile.offerers.length; i++)</p>
+        <p>    			{</p>
+        <p>    				if(tile.offerers[i] == msg.sender) 						</p>
+        <p>    				{</p>
+        <p>    					msg.sender.send(tile.offers[i]); 					</p>
+        <p>    					tile.offers[i] = msg.value; 							</p>
+        <p>    					whathappened = 6;</p>
+        <p>    					return;</p>
+        <p>    				}</p>
+        <p>    			}	</p>
+        <p>    			tile.offerers.length++; </p>
+        <p>    			tile.offers.length++; </p>
+        <p>    			tile.offerers[tile.offerers.length - 1] = msg.sender; </p>
+        <p>    			tile.offers[tile.offers.length - 1] = msg.value; </p>
+        <p>    			whathappened = 7;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    	}</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function retractOffer(uint8 col, uint8 row) </p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 60;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>        for(uint8 i = 0; i &lt; tile.offerers.length; i++)</p>
+        <p>    	{</p>
+        <p>    		if(tile.offerers[i] == msg.sender) </p>
+        <p>    		{</p>
+        <p>    			whathappened = 61;</p>
+        <p>    			removeOffer(col,row,i);</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    	}	</p>
+        <p>        whathappened = 62; </p>
+        <p>        return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function rejectOffer(uint8 col, uint8 row, uint8 i) </p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 70;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 71;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(i &lt; 0 || i &gt; (tile.offers.length - 1)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 72;</p>
+        <p>    		return;</p>
+        <p>    	}	</p>
+        <p>    	removeOffer(col,row,i);</p>
+        <p>    	whathappened = 73;</p>
+        <p>		return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function removeOffer(uint8 col, uint8 row, uint8 i) private </p>
+        <p>    {</p>
+        <p>    	Tile tile = tiles[col][row]; </p>
+        <p>        tile.offerers[i].send(tile.offers[i]); </p>
+        <p>    			</p>
+        <p>    	delete tile.offerers[i];   </p>
+        <p>    	delete tile.offers[i];   </p>
+        <p>    	for(uint8 j = i+1; j &lt; tile.offerers.length; j++) </p>
+        <p>    	{</p>
+        <p>    	    tile.offerers[j-1] = tile.offerers[j];</p>
+        <p>    	    tile.offers[j-1] = tile.offers[j];</p>
+        <p>    	}</p>
+        <p>    	tile.offerers.length--;</p>
+        <p>    	tile.offers.length--;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function acceptOffer(uint8 col, uint8 row, uint8 i) </p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 80;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 81;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(i &lt; 0 || i &gt; (tile.offers.length - 1)) </p>
+        <p>    	{</p>
+        <p>    		whathappened = 82;</p>
+        <p>    		return;</p>
+        <p>    	}	</p>
+        <p>    	uint offeramount = tile.offers[i];</p>
+        <p>    	uint housecut = offeramount / 10;</p>
+        <p>    	creator.send(housecut);</p>
+        <p>    	tile.owner.send(offeramount-housecut); </p>
+        <p>    	tile.owner = tile.offerers[i]; </p>
+        <p>    	for(uint8 j = 0; j &lt; tile.offerers.length; j++) </p>
+        <p>    	{</p>
+        <p>    		if(j != i) </p>
+        <p>    			tile.offerers[j].send(tile.offers[j]);</p>
+        <p>    	}</p>
+        <p>    	delete tile.offerers; </p>
+        <p>    	delete tile.offers; </p>
+        <p>    	whathappened = 83;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOfferers(uint8 col, uint8 row) constant returns (address[])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].offerers; </p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOffers(uint8 col, uint8 row) constant returns (uint[])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].offers; </p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function isOOB(uint8 col, uint8 row) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	if(col &lt; 0 || col &gt; (mapsize-1) || row &lt; 0 || row &gt; (mapsize-1))</p>
+        <p>    		return true; </p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function blockHexCoordsValid(int8 x, int8 y) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	if(-33 &lt;= y &amp;&amp; y &lt;= 33)</p>
+        <p>    	{</p>
+        <p>    		if(y % 2 != 0 ) </p>
+        <p>    		{</p>
+        <p>    			if(-50 &lt;= x &amp;&amp; x &lt;= 49)</p>
+        <p>    				return true;</p>
+        <p>    		}</p>
+        <p>    		else </p>
+        <p>    		{</p>
+        <p>    			if(-49 &lt;= x &amp;&amp; x &lt;= 49)</p>
+        <p>    				return true;</p>
+        <p>    		}	</p>
+        <p>    	}	</p>
+        <p>    	else</p>
+        <p>    	{	</p>
+        <p>    		uint8 absx;</p>
+        <p>			uint8 absy;</p>
+        <p>			if(x &lt; 0)</p>
+        <p>				absx = uint8(x*-1);</p>
+        <p>			else</p>
+        <p>				absx = uint8(x);</p>
+        <p>			if(y &lt; 0)</p>
+        <p>				absy = uint8(y*-1);</p>
+        <p>			else</p>
+        <p>				absy = uint8(y);</p>
+        <p>    		if((y &gt;= 0 &amp;&amp; x &gt;= 0) || (y &lt; 0 &amp;&amp; x &gt; 0)) </p>
+        <p>    		{</p>
+        <p>    			if(y % 2 != 0 ) </p>
+        <p>    			{</p>
+        <p>    				if (((absx*2) + (absy*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}	</p>
+        <p>    			else	</p>
+        <p>    			{</p>
+        <p>    				if ((((absx+1)*2) + ((absy-1)*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{	</p>
+        <p>    			if(y % 2 == 0 ) </p>
+        <p>    			{</p>
+        <p>    				if (((absx*2) + (absy*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}	</p>
+        <p>    			else	</p>
+        <p>    			{</p>
+        <p>    				if ((((absx+1)*2) + ((absy-1)*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}</p>
+        <p>    		}</p>
+        <p>    	}</p>
+        <p>    	return false;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function isValidLocation(uint8 col, uint8 row, int8[5] _block, int8[24] wouldoccupy) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	bool touches;</p>
+        <p>    	Tile tile = tiles[col][row]; </p>
+        <p>    	</p>
+        <p>        for(uint8 b = 0; b &lt; 24; b+=3) </p>
+        <p>       	{</p>
+        <p>       		if(!blockHexCoordsValid(wouldoccupy[b], wouldoccupy[b+1])) </p>
+        <p>       		{</p>
+        <p>       			whathappened = 10;</p>
+        <p>       			return false;</p>
+        <p>       		}</p>
+        <p>       		for(uint o = 0; o &lt; tile.occupado.length; o++)  </p>
+        <p>          	{</p>
+        <p>     			if(wouldoccupy[b] == tile.occupado[o][0] &amp;&amp; wouldoccupy[b+1] == tile.occupado[o][1] &amp;&amp; wouldoccupy[b+2] == tile.occupado[o][2]) </p>
+        <p>     			{</p>
+        <p>     				whathappened = 11;</p>
+        <p>     				return false; </p>
+        <p>     			}</p>
+        <p>          	}</p>
+        <p>     		if(touches == false &amp;&amp; wouldoccupy[b+2] == 0)  </p>
+        <p>     		{</p>
+        <p>     			touches = true; </p>
+        <p>     		}	</p>
+        <p>       	}</p>
+        <p>        </p>
+        <p>        if(touches == false)  </p>
+        <p>		{</p>
+        <p>          	int8[48] memory attachesto = bds.getAttachesto(uint8(_block[0]));</p>
+        <p>          	for(uint8 a = 0; a &lt; 48 &amp;&amp; !touches; a+=3) </p>
+        <p>          	{</p>
+        <p>          		if(attachesto[a] == 0 &amp;&amp; attachesto[a+1] == 0 &amp;&amp; attachesto[a+2] == 0) </p>
+        <p>          			break;</p>
+        <p>          		attachesto[a] = attachesto[a]+_block[1];</p>
+        <p>          		attachesto[a+1] = attachesto[a+1]+_block[2];</p>
+        <p>           		if(attachesto[1] % 2 != 0 &amp;&amp; attachesto[a+1] % 2 == 0) </p>
+        <p>           			attachesto[a] = attachesto[a]+1;               </p>
+        <p>           		attachesto[a+2] = attachesto[a+2]+_block[3];</p>
+        <p>           		for(o = 0; o &lt; tile.occupado.length &amp;&amp; !touches; o++)</p>
+        <p>           		{</p>
+        <p>           			if(attachesto[a] == tile.occupado[o][0] &amp;&amp; attachesto[a+1] == tile.occupado[o][1] &amp;&amp; attachesto[a+2] == tile.occupado[o][2]) </p>
+        <p>           			{</p>
+        <p>           				whathappened = 12;</p>
+        <p>           				return true; </p>
+        <p>           			}</p>
+        <p>           		}</p>
+        <p>          	}</p>
+        <p>          	whathappened = 13;</p>
+        <p>          	return false; </p>
+        <p>		}</p>
+        <p>        else </p>
+        <p>        {</p>
+        <p>        	whathappened = 14;</p>
+        <p>        	return true;</p>
+        <p>        }	</p>
+        <p>    }  </p>
+        <p></p>
+        <p>    function getUint8FromByte32(bytes32 _b32, uint8 byteindex) public constant returns(uint8) {</p>
+        <p>    	uint numdigits = 64;</p>
+        <p>    	uint buint = uint(_b32);</p>
+        <p>    	uint upperpowervar = 16 ** (numdigits - (byteindex*2)); 		</p>
+        <p>    	uint lowerpowervar = 16 ** (numdigits - 2 - (byteindex*2));		</p>
+        <p>    	uint postheadchop;</p>
+        <p>    	if(byteindex == 0)</p>
+        <p>    		postheadchop = buint; 								</p>
+        <p>    	else</p>
+        <p>    		postheadchop = buint % upperpowervar; 				</p>
+        <p>    	uint remainder = postheadchop % lowerpowervar; 			</p>
+        <p>    	uint evenedout = postheadchop - remainder; 				</p>
+        <p>    	uint b = evenedout / lowerpowervar; 					</p>
+        <p>    	return uint8(b);</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>  uint8 whathappened;</p>
+        <p>  function getWhatHappened() public constant returns (uint8)</p>
+        <p>  {</p>
+        <p>  	return whathappened;</p>
+        <p>  }</p>
+        <p>}</p>
+    </div>
+</div>
+                <div id="v10" class="sub-tab-pane" style="display:none"><p><strong>:: The second of four Etheria versions - October 22, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0xe414716F017b5c1457bF98e985BCcB135DFf81F2</p><br><p><Strong>Source Code:</Strong></p>
+                <div class="code-container">
+        <p>contract BlockDefStorage</p>
+        <p>{</p>
+        <p>	function getOccupies(uint8 which) public returns (int8[24])</p>
+        <p>	{}</p>
+        <p>	function getAttachesto(uint8 which) public returns (int8[48])</p>
+        <p>    {}</p>
+        <p>}</p>
+        <p></p>
+        <p>contract MapElevationRetriever</p>
+        <p>{</p>
+        <p>	function getElevation(uint8 col, uint8 row) public constant returns (uint8)</p>
+        <p>	{}</p>
+        <p>}</p>
+        <p></p>
+        <p>contract Etheria</p>
+        <p>{</p>
+        <p>	event TileChanged(uint8 col, uint8 row);</p>
+        <p>	</p>
+        <p>    uint8 mapsize = 33;</p>
+        <p>    Tile[33][33] tiles;</p>
+        <p>    address creator;</p>
+        <p>    </p>
+        <p>    struct Tile</p>
+        <p>    {</p>
+        <p>    	address owner;</p>
+        <p>    	string name;</p>
+        <p>    	string status;</p>
+        <p>    	address[] offerers;</p>
+        <p>    	uint[] offers;</p>
+        <p>    	int8[5][] blocks;</p>
+        <p>    	uint lastfarm;</p>
+        <p>    	int8[3][] occupado;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    BlockDefStorage bds;</p>
+        <p>    MapElevationRetriever mer;</p>
+        <p>    </p>
+        <p>    function Etheria() {</p>
+        <p>    	creator = msg.sender;</p>
+        <p>    	bds = BlockDefStorage(0x782bdf7015b71b64f6750796dd087fde32fd6fdc);</p>
+        <p>    	mer = MapElevationRetriever(0x68549d7dbb7a956f955ec1263f55494f05972a6b);</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOwner(uint8 col, uint8 row) public constant returns(address)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].owner;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getName(uint8 col, uint8 row) public constant returns(string)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].name;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function setName(uint8 col, uint8 row, string _n) public</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 50;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender)</p>
+        <p>    	{</p>
+        <p>    		whathappened = 51;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	tile.name = _n;</p>
+        <p>    	TileChanged(col,row);</p>
+        <p>    	whathappened = 52;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getStatus(uint8 col, uint8 row) public constant returns(string)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].status;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function setStatus(uint8 col, uint8 row, string _s) public</p>
+        <p>    {</p>
+        <p>    	if(msg.value == 0)</p>
+        <p>    	{</p>
+        <p>    		whathappened = 40;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(msg.value != 1000000000000000000)</p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value);</p>
+        <p>    		whathappened = 41;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value);</p>
+        <p>    		whathappened = 42;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender)</p>
+        <p>    	{</p>
+        <p>    		msg.sender.send(msg.value);</p>
+        <p>    		whathappened = 43;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	tile.status = _s;</p>
+        <p>    	creator.send(msg.value);</p>
+        <p>    	TileChanged(col,row);</p>
+        <p>    	whathappened = 44;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getLastFarm(uint8 col, uint8 row) public constant returns (uint)</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].lastfarm;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function farmTile(uint8 col, uint8 row) public</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 30;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>        if(tile.owner != msg.sender)</p>
+        <p>        {</p>
+        <p>        	whathappened = 31;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        if((block.number - tile.lastfarm) &lt; 2500)</p>
+        <p>        {</p>
+        <p>        	if(msg.value == 0)</p>
+        <p>        	{</p>
+        <p>        		whathappened = 32;</p>
+        <p>        		return;</p>
+        <p>        	}	</p>
+        <p>        	else if(msg.value != 1000000000000000000)</p>
+        <p>        	{	</p>
+        <p>        		msg.sender.send(msg.value);</p>
+        <p>        		whathappened = 34;</p>
+        <p>        		return;</p>
+        <p>        	}</p>
+        <p>        	else</p>
+        <p>        	{</p>
+        <p>        		creator.send(msg.value);</p>
+        <p>        	}	</p>
+        <p>        }</p>
+        <p>        else</p>
+        <p>        {</p>
+        <p>        	if(msg.value &gt; 0)</p>
+        <p>        	{</p>
+        <p>        		msg.sender.send(msg.value);</p>
+        <p>        	}</p>
+        <p>        }</p>
+        <p>        </p>
+        <p>        bytes32 lastblockhash = block.blockhash(block.number - 1);</p>
+        <p>    	for(uint8 i = 0; i &lt; 20; i++)</p>
+        <p>    	{</p>
+        <p>            tile.blocks.length+=1;</p>
+        <p>            if(tile.blocks.length == 1)</p>
+        <p>            	tile.blocks[tile.blocks.length - 1][0] = 0;</p>
+        <p>            else</p>
+        <p>            	tile.blocks[tile.blocks.length - 1][0] = int8(getUint8FromByte32(lastblockhash,i) % 32);</p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][1] = 0;</p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][2] = 0;</p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][3] = -1;</p>
+        <p>    	    tile.blocks[tile.blocks.length - 1][4] = 0;</p>
+        <p>    	}</p>
+        <p>    	tile.lastfarm = block.number;</p>
+        <p>    	TileChanged(col,row);</p>
+        <p>    	whathappened = 33;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function editBlock(uint8 col, uint8 row, uint index, int8[5] _block)</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 20;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>        if(tile.owner != msg.sender)</p>
+        <p>        {</p>
+        <p>        	whathappened = 21;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        if(_block[3] &lt; 0)</p>
+        <p>        {</p>
+        <p>        	whathappened = 22;</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        </p>
+        <p>        _block[0] = tile.blocks[index][0];</p>
+        <p></p>
+        <p>        int8[24] memory didoccupy = bds.getOccupies(uint8(_block[0]));</p>
+        <p>        int8[24] memory wouldoccupy = bds.getOccupies(uint8(_block[0]));</p>
+        <p>        </p>
+        <p>        for(uint8 b = 0; b &lt; 24; b+=3)</p>
+        <p>		{</p>
+        <p>			 wouldoccupy[b] = wouldoccupy[b]+_block[1];</p>
+        <p>			 wouldoccupy[b+1] = wouldoccupy[b+1]+_block[2];</p>
+        <p>			 if(wouldoccupy[1] % 2 != 0 &amp;&amp; wouldoccupy[b+1] % 2 == 0)</p>
+        <p>				 wouldoccupy[b] = wouldoccupy[b]+1;</p>
+        <p>			 wouldoccupy[b+2] = wouldoccupy[b+2]+_block[3];</p>
+        <p>			 </p>
+        <p>			 didoccupy[b] = didoccupy[b]+tile.blocks[index][1];</p>
+        <p>			 didoccupy[b+1] = didoccupy[b+1]+tile.blocks[index][2];</p>
+        <p>			 if(didoccupy[1] % 2 != 0 &amp;&amp; didoccupy[b+1] % 2 == 0)</p>
+        <p>				 didoccupy[b] = didoccupy[b]+1;</p>
+        <p>        		didoccupy[b+2] = didoccupy[b+2]+tile.blocks[index][3];</p>
+        <p>		}</p>
+        <p>        </p>
+        <p>        if(!isValidLocation(col,row,_block, wouldoccupy))</p>
+        <p>        {</p>
+        <p>        	return;</p>
+        <p>        }</p>
+        <p>        </p>
+        <p>     	if(tile.blocks[index][3] &gt;= 0)</p>
+        <p>     	{</p>
+        <p>          	for(uint8 l = 0; l &lt; 24; l+=3)</p>
+        <p>          	{</p>
+        <p>          		for(uint o = 0; o &lt; tile.occupado.length; o++)</p>
+        <p>          		{</p>
+        <p>          			if(didoccupy[l] == tile.occupado[o][0] &amp;&amp; didoccupy[l+1] == tile.occupado[o][1] &amp;&amp; didoccupy[l+2] == tile.occupado[o][2])</p>
+        <p>          			{</p>
+        <p>          				tile.occupado[o][0] = wouldoccupy[l];</p>
+        <p>          				tile.occupado[o][1] = wouldoccupy[l+1];</p>
+        <p>          				tile.occupado[o][2] = wouldoccupy[l+2];</p>
+        <p>          			}</p>
+        <p>          		}</p>
+        <p>          	}</p>
+        <p>     	}</p>
+        <p>     	else</p>
+        <p>     	{</p>
+        <p>     		for(uint8 ll = 0; ll &lt; 24; ll+=3)</p>
+        <p>          	{</p>
+        <p>     			tile.occupado.length++;</p>
+        <p>     			tile.occupado[tile.occupado.length-1][0] = wouldoccupy[ll];</p>
+        <p>     			tile.occupado[tile.occupado.length-1][1] = wouldoccupy[ll+1];</p>
+        <p>     			tile.occupado[tile.occupado.length-1][2] = wouldoccupy[ll+2];</p>
+        <p>          	}</p>
+        <p>     	}</p>
+        <p>     	tile.blocks[index] = _block;</p>
+        <p>     	TileChanged(col,row);</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>        </p>
+        <p>    function getBlocks(uint8 col, uint8 row) public constant returns (int8[5][])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].blocks;</p>
+        <p>    }</p>
+        <p>   </p>
+        <p>    function makeOffer(uint8 col, uint8 row)</p>
+        <p>    {</p>
+        <p>    	if(msg.value == 0)</p>
+        <p>    	{</p>
+        <p>    		whathappened = 1;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 2;</p>
+        <p>    		msg.sender.send(msg.value);</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner == address(0x0000000000000000000000000000000000000000))</p>
+        <p>    	{</p>
+        <p>    		if(msg.value != 1000000000000000000 || mer.getElevation(col,row) &lt; 125)</p>
+        <p>    		{</p>
+        <p>    			msg.sender.send(msg.value);</p>
+        <p>    			whathappened = 3;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{</p>
+        <p>    			creator.send(msg.value);</p>
+        <p>    			tile.owner = msg.sender;</p>
+        <p>    			TileChanged(col,row);</p>
+        <p>    			whathappened = 4;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    	}</p>
+        <p>    	else</p>
+        <p>    	{</p>
+        <p>    		if(tile.owner == msg.sender || msg.value &lt; 10000000000000000 || msg.value &gt; 1000000000000000000000000 || tile.offerers.length &gt;= 10 )</p>
+        <p>    		{</p>
+        <p>    			msg.sender.send(msg.value);</p>
+        <p>    			whathappened = 5;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{</p>
+        <p>    			for(uint8 i = 0; i &lt; tile.offerers.length; i++)</p>
+        <p>    			{</p>
+        <p>    				if(tile.offerers[i] == msg.sender)</p>
+        <p>    				{</p>
+        <p>    					msg.sender.send(tile.offers[i]);</p>
+        <p>    					tile.offers[i] = msg.value;</p>
+        <p>    					TileChanged(col,row);</p>
+        <p>    					whathappened = 6;</p>
+        <p>    					return;</p>
+        <p>    				}</p>
+        <p>    			}</p>
+        <p>    			tile.offerers.push(msg.sender);</p>
+        <p>    			tile.offers.push(msg.value);</p>
+        <p>    			TileChanged(col,row);</p>
+        <p>    			whathappened = 7;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    	}</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function deleteOffer(uint8 col, uint8 row, uint8 i, uint amt)</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 70;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(i &lt; 0 || i &gt; (tile.offers.length - 1))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 72;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(tile.owner == msg.sender || tile.offerers[i] == msg.sender)</p>
+        <p>    	{</p>
+        <p>    		if(amt != tile.offers[i])</p>
+        <p>    		{</p>
+        <p>    			whathappened = 74;</p>
+        <p>    			return;</p>
+        <p>    		}</p>
+        <p>    		</p>
+        <p>    		tile.offerers[i].send(tile.offers[i]);</p>
+        <p>    		delete tile.offerers[i];</p>
+        <p>    		delete tile.offers[i];</p>
+        <p>    		for(uint8 j = i+1; j &lt; tile.offerers.length; j++)</p>
+        <p>    		{</p>
+        <p>    			tile.offerers[j-1] = tile.offerers[j];</p>
+        <p>    			tile.offers[j-1] = tile.offers[j];</p>
+        <p>    		}</p>
+        <p>    		tile.offerers.length--;</p>
+        <p>    		tile.offers.length--;</p>
+        <p>    		</p>
+        <p>    		TileChanged(col,row);</p>
+        <p>        	whathappened = 73;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	else</p>
+        <p>    	{</p>
+        <p>    		whathappened = 71;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function acceptOffer(uint8 col, uint8 row, uint8 i, uint amt)</p>
+        <p>    {</p>
+        <p>    	if(isOOB(col,row))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 80;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	if(tile.owner != msg.sender)</p>
+        <p>    	{</p>
+        <p>    		whathappened = 81;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	if(i &lt; 0 || i &gt; (tile.offers.length - 1))</p>
+        <p>    	{</p>
+        <p>    		whathappened = 82;</p>
+        <p>    		return;</p>
+        <p>    	}</p>
+        <p>    	uint offeramount = tile.offers[i];</p>
+        <p>    	if(amt != offeramount)</p>
+        <p>		{</p>
+        <p>			whathappened = 84;</p>
+        <p>			return;</p>
+        <p>		}</p>
+        <p>    	uint housecut = offeramount / 10;</p>
+        <p>    	creator.send(housecut);</p>
+        <p>    	tile.owner.send(offeramount-housecut);</p>
+        <p>    	tile.owner = tile.offerers[i];</p>
+        <p>    	for(uint8 j = 0; j &lt; tile.offerers.length; j++)</p>
+        <p>    	{</p>
+        <p>    		if(j != i)</p>
+        <p>    			tile.offerers[j].send(tile.offers[j]);</p>
+        <p>    	}</p>
+        <p>    	delete tile.offerers;</p>
+        <p>    	delete tile.offers;</p>
+        <p>    	TileChanged(col,row);</p>
+        <p>    	whathappened = 83;</p>
+        <p>    	return;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOfferers(uint8 col, uint8 row) constant returns (address[])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].offerers;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function getOffers(uint8 col, uint8 row) constant returns (uint[])</p>
+        <p>    {</p>
+        <p>    	return tiles[col][row].offers;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function isOOB(uint8 col, uint8 row) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	if(col &lt; 0 || col &gt; (mapsize-1) || row &lt; 0 || row &gt; (mapsize-1))</p>
+        <p>    		return true;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function blockHexCoordsValid(int8 x, int8 y) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	uint8 absx;</p>
+        <p>		uint8 absy;</p>
+        <p>		if(x &lt; 0)</p>
+        <p>			absx = uint8(x*-1);</p>
+        <p>		else</p>
+        <p>			absx = uint8(x);</p>
+        <p>		if(y &lt; 0)</p>
+        <p>			absy = uint8(y*-1);</p>
+        <p>		else</p>
+        <p>			absy = uint8(y);</p>
+        <p>    	</p>
+        <p>    	if(absy &lt;= 33)</p>
+        <p>    	{</p>
+        <p>    		if(y % 2 != 0 )</p>
+        <p>    		{</p>
+        <p>    			if(-50 &lt;= x &amp;&amp; x &lt;= 49)</p>
+        <p>    				return true;</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{</p>
+        <p>    			if(absx &lt;= 49)</p>
+        <p>    				return true;</p>
+        <p>    		}	</p>
+        <p>    	}	</p>
+        <p>    	else</p>
+        <p>    	{	</p>
+        <p>    		if((y &gt;= 0 &amp;&amp; x &gt;= 0) || (y &lt; 0 &amp;&amp; x &gt; 0))</p>
+        <p>    		{</p>
+        <p>    			if(y % 2 != 0 )</p>
+        <p>    			{</p>
+        <p>    				if (((absx*2) + (absy*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}	</p>
+        <p>    			else</p>
+        <p>    			{</p>
+        <p>    				if ((((absx+1)*2) + ((absy-1)*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}</p>
+        <p>    		}</p>
+        <p>    		else</p>
+        <p>    		{	</p>
+        <p>    			if(y % 2 == 0 )</p>
+        <p>    			{</p>
+        <p>    				if (((absx*2) + (absy*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}	</p>
+        <p>    			else</p>
+        <p>    			{</p>
+        <p>    				if ((((absx+1)*2) + ((absy-1)*3)) &lt;= 198)</p>
+        <p>    					return true;</p>
+        <p>    			}</p>
+        <p>    		}</p>
+        <p>    	}</p>
+        <p>    	return false;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    function isValidLocation(uint8 col, uint8 row, int8[5] _block, int8[24] wouldoccupy) private constant returns (bool)</p>
+        <p>    {</p>
+        <p>    	bool touches;</p>
+        <p>    	Tile tile = tiles[col][row];</p>
+        <p>    	</p>
+        <p>        for(uint8 b = 0; b &lt; 24; b+=3)</p>
+        <p>       	{</p>
+        <p>       		if(!blockHexCoordsValid(wouldoccupy[b], wouldoccupy[b+1]))</p>
+        <p>       		{</p>
+        <p>       			whathappened = 10;</p>
+        <p>       			return false;</p>
+        <p>       		}</p>
+        <p>       		for(uint o = 0; o &lt; tile.occupado.length; o++)</p>
+        <p>          	{</p>
+        <p>     			if(wouldoccupy[b] == tile.occupado[o][0] &amp;&amp; wouldoccupy[b+1] == tile.occupado[o][1] &amp;&amp; wouldoccupy[b+2] == tile.occupado[o][2])</p>
+        <p>     			{</p>
+        <p>     				whathappened = 11;</p>
+        <p>     				return false;</p>
+        <p>     			}</p>
+        <p>          	}</p>
+        <p>     		if(touches == false &amp;&amp; wouldoccupy[b+2] == 0)</p>
+        <p>     		{</p>
+        <p>     			touches = true;</p>
+        <p>     		}	</p>
+        <p>       	}</p>
+        <p>        </p>
+        <p>        if(touches == false)</p>
+        <p>		{</p>
+        <p>          	int8[48] memory attachesto = bds.getAttachesto(uint8(_block[0]));</p>
+        <p>          	for(uint8 a = 0; a &lt; 48 &amp;&amp; !touches; a+=3)</p>
+        <p>          	{</p>
+        <p>          		if(attachesto[a] == 0 &amp;&amp; attachesto[a+1] == 0 &amp;&amp; attachesto[a+2] == 0)</p>
+        <p>          			break;</p>
+        <p>          		attachesto[a+1] = attachesto[a+1]+_block[2];</p>
+        <p>           		if(attachesto[1] % 2 != 0 &amp;&amp; attachesto[a+1] % 2 == 0)</p>
+        <p>           			attachesto[a] = attachesto[a]+1;</p>
+        <p>           		for(o = 0; o &lt; tile.occupado.length &amp;&amp; !touches; o++)</p>
+        <p>           		{</p>
+        <p>           			if((attachesto[a]+_block[1]) == tile.occupado[o][0] &amp;&amp; attachesto[a+1] == tile.occupado[o][1] &amp;&amp; (attachesto[a+2]+_block[3]) == tile.occupado[o][2])</p>
+        <p>           			{</p>
+        <p>           				whathappened = 12;</p>
+        <p>           				return true;</p>
+        <p>           			}</p>
+        <p>           		}</p>
+        <p>          	}</p>
+        <p>          	whathappened = 13;</p>
+        <p>          	return false;</p>
+        <p>		}</p>
+        <p>        else</p>
+        <p>        {</p>
+        <p>        	whathappened = 14;</p>
+        <p>        	return true;</p>
+        <p>        }	</p>
+        <p>    }</p>
+        <p></p>
+        <p>    function getUint8FromByte32(bytes32 _b32, uint8 byteindex) public constant returns(uint8) {</p>
+        <p>    	uint numdigits = 64;</p>
+        <p>    	uint base = 16;</p>
+        <p>    	uint digitsperbyte = 2;</p>
+        <p>    	uint buint = uint(_b32);</p>
+        <p>    	uint lowerpowervar = base ** (numdigits - digitsperbyte - (byteindex*digitsperbyte));</p>
+        <p>    	uint postheadchop;</p>
+        <p>    	if(byteindex == 0)</p>
+        <p>    		postheadchop = buint;</p>
+        <p>    	else</p>
+        <p>    		postheadchop = buint % (base ** (numdigits - (byteindex*digitsperbyte)));</p>
+        <p>    	return uint8((postheadchop - (postheadchop % lowerpowervar)) / lowerpowervar);</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>    uint8 whathappened;</p>
+        <p>    function getWhatHappened() public constant returns (uint8)</p>
+        <p>    {</p>
+        <p>    	return whathappened;</p>
+        <p>    }</p>
+        <p>    </p>
+        <p>   bool locked;</p>
+        <p>   function setLocked()</p>
+        <p>   {</p>
+        <p>	   locked = true;</p>
+        <p>   }</p>
+        <p>   function getLocked() public constant returns (bool)</p>
+        <p>   {</p>
+        <p>	   return locked;</p>
+        <p>   }</p>
+        <p>   function kill()</p>
+        <p>   {</p>
+        <p>       if (!locked &amp;&amp; msg.sender == creator)</p>
+        <p>           suicide(creator);</p>
+        <p>   }</p>
+        <p>}</p>
+    </div>
+</div>
+                
+                <div id="v11" class="sub-tab-pane" style="display:none"><p><strong>:: The third of four Etheria versions - October 29, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0x169332Ae7D143E4B5c6baEdb2FEF77BFBdDB4011</p><br><p><Strong>Source Code:</Strong></p>
+                  <div class="code-container">
+<p>contract BlockDefStorage </p>
+<p>{</p>
+<p>	function getOccupies(uint8 blocktype) public returns (int8[24])</p>
+<p>	{}</p>
+<p>	function getAttachesto(uint8 blocktype) public returns (int8[48])</p>
+<p>    {}</p>
+<p>}</p>
+<p></p>
+<p>contract MapElevationRetriever </p>
+<p>{</p>
+<p>	function getElevation(uint8 col, uint8 row) public constant returns (uint8)</p>
+<p>	{}</p>
+<p>}</p>
+<p></p>
+<p>contract Etheria </p>
+<p>{</p>
+<p>	event TileChanged(uint8 col, uint8 row);</p>
+<p>	</p>
+<p>    uint8 mapsize = 33;</p>
+<p>    Tile[33][33] tiles;</p>
+<p>    address creator;</p>
+<p>    </p>
+<p>    struct Tile </p>
+<p>    {</p>
+<p>    	address owner;</p>
+<p>    	string name;</p>
+<p>    	string status;</p>
+<p>    	int8[5][] blocks; </p>
+<p>    	uint lastfarm;</p>
+<p>    	int8[3][] occupado; </p>
+<p>    }</p>
+<p>    </p>
+<p>    BlockDefStorage bds;</p>
+<p>    MapElevationRetriever mer;</p>
+<p>    </p>
+<p>    function Etheria() {</p>
+<p>    	creator = tx.origin;</p>
+<p>    	bds = BlockDefStorage(0xd4e686a1fbf1bfe058510f07cd3936d3d5a70589); </p>
+<p>    	mer = MapElevationRetriever(0x68549d7dbb7a956f955ec1263f55494f05972a6b);</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getOwner(uint8 col, uint8 row) public constant returns(address)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].owner; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function setOwner(uint8 col, uint8 row, address newowner)</p>
+<p>    {</p>
+<p>    	if(tiles[col][row].owner == tx.origin ||</p>
+<p>    			(tx.origin == creator && !getLocked()))</p>
+<p>    		tiles[col][row].owner = newowner; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function getName(uint8 col, uint8 row) public constant returns(string)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].name; </p>
+<p>    }</p>
+<p>    function setName(uint8 col, uint8 row, string _n) public</p>
+<p>    {</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner != tx.origin && !(tx.origin == creator && !getLocked()))</p>
+<p>    	{</p>
+<p>    		whathappened = "50:setName:ERR:not owner";  </p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	tile.name = _n;</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "52:setName:SUCCESS";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getStatus(uint8 col, uint8 row) public constant returns(string)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].status; </p>
+<p>    }</p>
+<p>    function setStatus(uint8 col, uint8 row, string _s) public </p>
+<p>    {</p>
+<p>    	if(msg.value != 1000000000000000000) </p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); 		</p>
+<p>    		whathappened = "41:setStatus:ERR:value was not 1 ETH";</p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner != tx.origin && !(tx.origin == creator && !getLocked()))</p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); 		</p>
+<p>    		whathappened = "43:setStatus:ERR:not owner";  </p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	tile.status = _s;</p>
+<p>    	creator.send(msg.value);</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "44:setStatus:SUCCESS";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getLastFarm(uint8 col, uint8 row) public constant returns (uint)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].lastfarm;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function farmTile(uint8 col, uint8 row, int8 blocktype) public </p>
+<p>    {</p>
+<p>    	if(blocktype < 0 || blocktype > 17) </p>
+<p>    	{</p>
+<p>    		whathappened = "34:farmTile:ERR:invalid blocktype";</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		return;</p>
+<p>    	}	</p>
+<p>    	</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>        if(tile.owner != tx.origin)</p>
+<p>        {</p>
+<p>        	whathappened = "31:farmTile:ERR:not owner";</p>
+<p>        	tx.origin.send(msg.value); </p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if((block.number - tile.lastfarm) < 2500) </p>
+<p>        {</p>
+<p>        	if(msg.value != 1000000000000000000)</p>
+<p>        	{	</p>
+<p>        		tx.origin.send(msg.value); </p>
+<p>        		whathappened = "31:farmTile:ERR:value was not 1 ETH";</p>
+<p>        		return;</p>
+<p>        	}</p>
+<p>        	else </p>
+<p>        	{</p>
+<p>        		creator.send(msg.value);</p>
+<p>        	}	</p>
+<p>        }</p>
+<p>        else</p>
+<p>        {</p>
+<p>        	if(msg.value > 0) </p>
+<p>        	{</p>
+<p>        		tx.origin.send(msg.value); </p>
+<p>        	}</p>
+<p>        }</p>
+<p>        </p>
+<p>    	for(uint8 i = 0; i < 10; i++)</p>
+<p>    	{</p>
+<p>            tile.blocks.length+=1;</p>
+<p>            tile.blocks[tile.blocks.length - 1][0] = int8(blocktype); </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][1] = 0; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][2] = 0; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][3] = -1; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][4] = 0; </p>
+<p>    	}</p>
+<p>    	tile.lastfarm = block.number;</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "33:farmTile:SUCCESS";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function editBlock(uint8 col, uint8 row, uint index, int8[5] _block)  </p>
+<p>    {</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>        if(tile.owner != tx.origin) </p>
+<p>        {</p>
+<p>        	whathappened = "21:editBlock:ERR:not owner";</p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if(_block[3] < 0) </p>
+<p>        {</p>
+<p>        	whathappened = "22:editBlock:ERR:cannot hide blocks";</p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if(index > (tile.blocks.length-1))</p>
+<p>        {</p>
+<p>        	whathappened = "23:editBlock:ERR:block index out of range";</p>
+<p>        	return;</p>
+<p>        }		</p>
+<p>        if(_block[0] == -1) </p>
+<p>        {</p>
+<p>        	tile.blocks[index][4] = _block[4];</p>
+<p>        	whathappened = "24:editBlock:SUCCESS:block color changed";</p>
+<p>        	return;</p>
+<p>        }	</p>
+<p>        _block[0] = tile.blocks[index][0]; </p>
+<p></p>
+<p>        int8[24] memory didoccupy = bds.getOccupies(uint8(_block[0]));</p>
+<p>        int8[24] memory wouldoccupy = bds.getOccupies(uint8(_block[0]));</p>
+<p>        </p>
+<p>        for(uint8 b = 0; b < 24; b+=3) </p>
+<p>		{</p>
+<p>			 wouldoccupy[b] = wouldoccupy[b]+_block[1];</p>
+<p>			 wouldoccupy[b+1] = wouldoccupy[b+1]+_block[2];</p>
+<p>			 if(wouldoccupy[1] % 2 != 0 && wouldoccupy[b+1] % 2 == 0) </p>
+<p>				 wouldoccupy[b] = wouldoccupy[b]+1;  			   </p>
+<p>			 wouldoccupy[b+2] = wouldoccupy[b+2]+_block[3];</p>
+<p>			 </p>
+<p>			 didoccupy[b] = didoccupy[b]+tile.blocks[index][1];</p>
+<p>			 didoccupy[b+1] = didoccupy[b+1]+tile.blocks[index][2];</p>
+<p>			 if(didoccupy[1] % 2 != 0 && didoccupy[b+1] % 2 == 0) </p>
+<p>				 didoccupy[b] = didoccupy[b]+1; 					 </p>
+<p>        		didoccupy[b+2] = didoccupy[b+2]+tile.blocks[index][3];</p>
+<p>		}</p>
+<p>        </p>
+<p>        if(!isValidLocation(col,row,_block, wouldoccupy))</p>
+<p>        {</p>
+<p>        	return; </p>
+<p>        }</p>
+<p>        </p>
+<p>        </p>
+<p>      	if(tile.blocks[index][3] >= 0) </p>
+<p>      	{</p>
+<p>          	for(uint8 l = 0; l < 24; l+=3) </p>
+<p>          	{</p>
+<p>          		for(uint o = 0; o < tile.occupado.length; o++)</p>
+<p>          		{</p>
+<p>          			if(didoccupy[l] == tile.occupado[o][0] && didoccupy[l+1] == tile.occupado[o][1] && didoccupy[l+2] == tile.occupado[o][2]) </p>
+<p>          			{</p>
+<p>          				tile.occupado[o][0] = wouldoccupy[l]; </p>
+<p>          				tile.occupado[o][1] = wouldoccupy[l+1];</p>
+<p>          				tile.occupado[o][2] = wouldoccupy[l+2];</p>
+<p>          			}</p>
+<p>          		}</p>
+<p>          	}</p>
+<p>      	}</p>
+<p>      	else </p>
+<p>      	{</p>
+<p>      		for(uint8 ll = 0; ll < 24; ll+=3) </p>
+<p>          	{</p>
+<p>      			tile.occupado.length++;</p>
+<p>      			tile.occupado[tile.occupado.length-1][0] = wouldoccupy[ll];</p>
+<p>      			tile.occupado[tile.occupado.length-1][1] = wouldoccupy[ll+1];</p>
+<p>      			tile.occupado[tile.occupado.length-1][2] = wouldoccupy[ll+2];</p>
+<p>          	}</p>
+<p>      	}</p>
+<p>      	tile.blocks[index] = _block;</p>
+<p>      	TileChanged(col,row);</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>       </p>
+<p>    function getBlocks(uint8 col, uint8 row) public constant returns (int8[5][])</p>
+<p>    {</p>
+<p>    	return tiles[col][row].blocks; </p>
+<p>    }</p>
+<p>   </p>
+<p>    function buyTile(uint8 col, uint8 row)</p>
+<p>    {    	</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner == address(0x0000000000000000000000000000000000000000))			</p>
+<p>    	{	  </p>
+<p>    		if(msg.value != 1000000000000000000 || mer.getElevation(col,row) < 125)	</p>
+<p>    		{</p>
+<p>    			tx.origin.send(msg.value); 	 									</p>
+<p>    			whathappened = "3:buyTile:ERR:wrong val or water";</p>
+<p>    			return;</p>
+<p>    		}</p>
+<p>    		else</p>
+<p>    		{	</p>
+<p>    			creator.send(msg.value);     		 					</p>
+<p>    			tile.owner = tx.origin;  								</p>
+<p>    			TileChanged(col,row);</p>
+<p>    			whathappened = "4:buyTile:SUCCESS";</p>
+<p>    			return;</p>
+<p>    		}</p>
+<p>    	}</p>
+<p>    	else</p>
+<p>    	{</p>
+<p>    		whathappened = "5:buyTile:ERR:OOB or already owned";</p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    }</p>
+<p>    </p>
+<p>    function blockHexCoordsValid(int8 x, int8 y) private constant returns (bool)</p>
+<p>    {</p>
+<p>    	uint8 absx;</p>
+<p>		uint8 absy;</p>
+<p>		if(x < 0)</p>
+<p>			absx = uint8(x*-1);</p>
+<p>		else</p>
+<p>			absx = uint8(x);</p>
+<p>		if(y < 0)</p>
+<p>			absy = uint8(y*-1);</p>
+<p>		else</p>
+<p>			absy = uint8(y);</p>
+<p>    	</p>
+<p>    	if(absy <= 33) </p>
+<p>    	{</p>
+<p>    		if(y % 2 != 0 ) </p>
+<p>    		{</p>
+<p>    			if(-50 <= x && x <= 49)</p>
+<p>    				return true;</p>
+<p>    		}</p>
+<p>    		else </p>
+<p>    		{</p>
+<p>    			if(absx <= 49)</p>
+<p>    				return true;</p>
+<p>    		}	</p>
+<p>    	}	</p>
+<p>    	else</p>
+<p>    	{	</p>
+<p>    		if((y >= 0 && x >= 0) || (y < 0 && x > 0)) </p>
+<p>    		{</p>
+<p>    			if(y % 2 != 0 ) </p>
+<p>    			{</p>
+<p>    				if (((absx*2) + (absy*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}	</p>
+<p>    			else	</p>
+<p>    			{</p>
+<p>    				if ((((absx+1)*2) + ((absy-1)*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}</p>
+<p>    		}</p>
+<p>    		else</p>
+<p>    		{	</p>
+<p>    			if(y % 2 == 0 ) </p>
+<p>    			{</p>
+<p>    				if (((absx*2) + (absy*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}	</p>
+<p>    			else	</p>
+<p>    			{</p>
+<p>    				if ((((absx+1)*2) + ((absy-1)*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}</p>
+<p>    		}</p>
+<p>    	}</p>
+<p>    	return false;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function isValidLocation(uint8 col, uint8 row, int8[5] _block, int8[24] wouldoccupy) private constant returns (bool)</p>
+<p>    {</p>
+<p>    	bool touches;</p>
+<p>    	Tile tile = tiles[col][row]; </p>
+<p>    	</p>
+<p>        for(uint8 b = 0; b < 24; b+=3) </p>
+<p>        	{</p>
+<p>        		if(!blockHexCoordsValid(wouldoccupy[b], wouldoccupy[b+1])) </p>
+<p>        		{</p>
+<p>        			whathappened = "10:editBlock:ERR:OOB";</p>
+<p>        			return false;</p>
+<p>        		}</p>
+<p>        		for(uint o = 0; o < tile.occupado.length; o++)  </p>
+<p>        	 	{</p>
+<p>        			if(wouldoccupy[b] == tile.occupado[o][0] && wouldoccupy[b+1] == tile.occupado[o][1] && wouldoccupy[b+2] == tile.occupado[o][2]) </p>
+<p>        			{</p>
+<p>        				whathappened = "11:editBlock:ERR:conflict with another block";</p>
+<p>        				return false; </p>
+<p>        			}</p>
+<p>        	 	}</p>
+<p>        		if(touches == false && wouldoccupy[b+2] == 0)  </p>
+<p>        		{</p>
+<p>        			touches = true; </p>
+<p>        		}	</p>
+<p>        	}</p>
+<p>        </p>
+<p>        if(touches == false)  </p>
+<p>		{</p>
+<p>    	 	int8[48] memory attachesto = bds.getAttachesto(uint8(_block[0]));</p>
+<p>    	 	for(uint8 a = 0; a < 48 && !touches; a+=3) </p>
+<p>    	 	{</p>
+<p>    	 		if(attachesto[a] == 0 && attachesto[a+1] == 0 && attachesto[a+2] == 0) </p>
+<p>    	 			break;</p>
+<p>    	 		attachesto[a+1] = attachesto[a+1]+_block[2];</p>
+<p>    	  		if(attachesto[1] % 2 != 0 && attachesto[a+1] % 2 == 0) </p>
+<p>    	  			attachesto[a] = attachesto[a]+1;  			       </p>
+<p>    	  		for(o = 0; o < tile.occupado.length && !touches; o++)</p>
+<p>    	  		{</p>
+<p>    	  			if((attachesto[a]+_block[1]) == tile.occupado[o][0] && attachesto[a+1] == tile.occupado[o][1] && (attachesto[a+2]+_block[3]) == tile.occupado[o][2]) </p>
+<p>    	  			{</p>
+<p>    	  				whathappened = "12:editBlock:SUCCESS:block put on another";</p>
+<p>    	  				return true; </p>
+<p>    	  			}</p>
+<p>    	  		}</p>
+<p>    	 	}</p>
+<p>    	 	whathappened = "13:editBlock:ERR:floating";</p>
+<p>    	 	return false; </p>
+<p>		}</p>
+<p>        else </p>
+<p>        {</p>
+<p>        	whathappened = "14:editBlock:SUCCESS:block put on ground";</p>
+<p>        	return true;</p>
+<p>        }	</p>
+<p>    }  </p>
+<p></p>
+<p>    string whathappened;</p>
+<p>    function getWhatHappened() public constant returns (string)</p>
+<p>    {</p>
+<p>    	return whathappened;</p>
+<p>    }</p>
+<p></p>
+<p>   function() </p>
+<p>   {</p>
+<p>	   tx.origin.send(msg.value);</p>
+<p>   }</p>
+<p>   </p>
+<p>   function empty() </p>
+<p>   {</p>
+<p>	   creator.send(address(this).balance); </p>
+<p>   }</p>
+<p>   </p>
+<p>   bool locked;			</p>
+<p>   function setLocked()</p>
+<p>   {</p>
+<p>	   if (msg.sender == creator)</p>
+<p>		   locked = true;</p>
+<p>   }</p>
+<p>   function getLocked() public constant returns (bool)</p>
+<p>   {</p>
+<p>	   return locked;</p>
+<p>   }</p>
+<p>   function kill()</p>
+<p>   { </p>
+<p>	   if (!getLocked() && msg.sender == creator)</p>
+<p>		   suicide(creator);  </p>
+<p>   }</p>
+<p>}</p>
+    </div>
+</div>
+                <div id="v12" class="sub-tab-pane" style="display:none"><p><strong>:: The fourth of four Etheria versions - November 1, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0xB21f8684f23Dbb1008508B4DE91a0aaEDEbdB7E4</p><br><p><Strong>Source Code:</Strong></p>
+                <div class="code-container">
+<p>contract BlockDefStorage </p>
+<p>{</p>
+<p>	function getOccupies(uint8 blocktype) public returns (int8[24])</p>
+<p>	{}</p>
+<p>	function getAttachesto(uint8 blocktype) public returns (int8[48])</p>
+<p>    {}</p>
+<p>}</p>
+<p></p>
+<p>contract MapElevationRetriever </p>
+<p>{</p>
+<p>	function getElevation(uint8 col, uint8 row) public constant returns (uint8)</p>
+<p>	{}</p>
+<p>}</p>
+<p></p>
+<p>contract Etheria </p>
+<p>{</p>
+<p>	event TileChanged(uint8 col, uint8 row);</p>
+<p>	</p>
+<p>    uint8 mapsize = 33;</p>
+<p>    Tile[33][33] tiles;</p>
+<p>    address creator;</p>
+<p>    </p>
+<p>    struct Tile </p>
+<p>    {</p>
+<p>    	address owner;</p>
+<p>    	string name;</p>
+<p>    	string status;</p>
+<p>    	int8[5][] blocks; </p>
+<p>    	uint lastfarm;</p>
+<p>    	int8[3][] occupado; </p>
+<p>    }</p>
+<p>    </p>
+<p>    BlockDefStorage bds;</p>
+<p>    MapElevationRetriever mer;</p>
+<p>    </p>
+<p>    function Etheria() {</p>
+<p>    	creator = tx.origin;</p>
+<p>    	bds = BlockDefStorage(0xd4e686a1fbf1bfe058510f07cd3936d3d5a70589); </p>
+<p>    	mer = MapElevationRetriever(0x68549d7dbb7a956f955ec1263f55494f05972a6b);</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getOwner(uint8 col, uint8 row) public constant returns(address)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].owner; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function setOwner(uint8 col, uint8 row, address newowner)</p>
+<p>    {</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner != tx.origin && !(tx.origin == creator && !getLocked()))</p>
+<p>    	{</p>
+<p>    		whathappened = "setOwner:ERR:not owner";  </p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	tile.owner = newowner;</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "setOwner:OK";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getName(uint8 col, uint8 row) public constant returns(string)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].name; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function setName(uint8 col, uint8 row, string _n) public</p>
+<p>    {</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner != tx.origin && !(tx.origin == creator && !getLocked()))</p>
+<p>    	{</p>
+<p>    		whathappened = "setName:ERR:not owner";  </p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	tile.name = _n;</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "setName:OK";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getStatus(uint8 col, uint8 row) public constant returns(string)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].status; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function setStatus(uint8 col, uint8 row, string _s) public </p>
+<p>    {</p>
+<p>    	if(msg.value != 1000000000000000000) </p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		whathappened = "setStatus:ERR:val!=1eth";</p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner != tx.origin && !(tx.origin == creator && !getLocked()))</p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		whathappened = "setStatus:ERR:not owner";  </p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    	tile.status = _s;</p>
+<p>    	creator.send(msg.value);</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "setStatus:OK";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getLastFarm(uint8 col, uint8 row) public constant returns (uint)</p>
+<p>    {</p>
+<p>    	return tiles[col][row].lastfarm;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function farmTile(uint8 col, uint8 row, int8 blocktype) public </p>
+<p>    {</p>
+<p>    	if(blocktype < 0 || blocktype > 17) </p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		whathappened = "farmTile:ERR:invalid blocktype";</p>
+<p>    		return;</p>
+<p>    	}	</p>
+<p>    	</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>        if(tile.owner != tx.origin)</p>
+<p>        {</p>
+<p>        	tx.origin.send(msg.value); </p>
+<p>        	whathappened = "farmTile:ERR:not owner";</p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if((block.number - tile.lastfarm) < 2500) </p>
+<p>        {</p>
+<p>        	if(msg.value != 1000000000000000000)</p>
+<p>        	{	</p>
+<p>        		tx.origin.send(msg.value); </p>
+<p>        		whathappened = "farmTile:ERR:val!=1eth";</p>
+<p>        		return;</p>
+<p>        	}</p>
+<p>        	else </p>
+<p>        	{</p>
+<p>        		creator.send(msg.value); </p>
+<p>        	}	</p>
+<p>        }</p>
+<p>        else</p>
+<p>        {</p>
+<p>        	if(msg.value > 0) </p>
+<p>        	{</p>
+<p>        		tx.origin.send(msg.value); </p>
+<p>        	}</p>
+<p>        }</p>
+<p>        </p>
+<p>    	for(uint8 i = 0; i < 10; i++)</p>
+<p>    	{</p>
+<p>            tile.blocks.length+=1;</p>
+<p>            tile.blocks[tile.blocks.length - 1][0] = int8(blocktype); </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][1] = 0; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][2] = 0; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][3] = -1; </p>
+<p>    	    tile.blocks[tile.blocks.length - 1][4] = 0; </p>
+<p>    	}</p>
+<p>    	tile.lastfarm = block.number;</p>
+<p>    	TileChanged(col,row);</p>
+<p>    	whathappened = "farmTile:OK";</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function editBlock(uint8 col, uint8 row, uint index, int8[5] _block) </p>
+<p>    {</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>        if(tile.owner != tx.origin) </p>
+<p>        {</p>
+<p>        	whathappened = "editBlock:ERR:not owner";</p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if(_block[3] < 0) </p>
+<p>        {</p>
+<p>        	whathappened = "editBlock:ERR:can't hide blocks";</p>
+<p>        	return;</p>
+<p>        }</p>
+<p>        if(index > (tile.blocks.length-1))</p>
+<p>        {</p>
+<p>        	whathappened = "editBlock:ERR:index OOR";</p>
+<p>        	return;</p>
+<p>        }		</p>
+<p>        if(_block[0] == -1) </p>
+<p>        {</p>
+<p>        	tile.blocks[index][4] = _block[4];</p>
+<p>        	whathappened = "editBlock:OK:color changed";</p>
+<p>        	return;</p>
+<p>        }	</p>
+<p>        _block[0] = tile.blocks[index][0]; </p>
+<p></p>
+<p>        int8[24] memory didoccupy = bds.getOccupies(uint8(_block[0]));</p>
+<p>        int8[24] memory wouldoccupy = bds.getOccupies(uint8(_block[0]));</p>
+<p>        </p>
+<p>        for(uint8 b = 0; b < 24; b+=3) </p>
+<p>		{</p>
+<p>			 wouldoccupy[b] = wouldoccupy[b]+_block[1];</p>
+<p>			 wouldoccupy[b+1] = wouldoccupy[b+1]+_block[2];</p>
+<p>			 if(wouldoccupy[1] % 2 != 0 && wouldoccupy[b+1] % 2 == 0) </p>
+<p>				 wouldoccupy[b] = wouldoccupy[b]+1; </p>
+<p>			 wouldoccupy[b+2] = wouldoccupy[b+2]+_block[3];</p>
+<p>			 </p>
+<p>			 didoccupy[b] = didoccupy[b]+tile.blocks[index][1];</p>
+<p>			 didoccupy[b+1] = didoccupy[b+1]+tile.blocks[index][2];</p>
+<p>			 if(didoccupy[1] % 2 != 0 && didoccupy[b+1] % 2 == 0) </p>
+<p>				 didoccupy[b] = didoccupy[b]+1; </p>
+<p>        		didoccupy[b+2] = didoccupy[b+2]+tile.blocks[index][3];</p>
+<p>		}</p>
+<p>        </p>
+<p>        if(!isValidLocation(col,row,_block, wouldoccupy))</p>
+<p>        {</p>
+<p>        	return; </p>
+<p>        }</p>
+<p>        </p>
+<p>      	if(tile.blocks[index][3] >= 0) </p>
+<p>      	{</p>
+<p>          	for(uint8 l = 0; l < 24; l+=3) </p>
+<p>          	{</p>
+<p>          		for(uint o = 0; o < tile.occupado.length; o++)</p>
+<p>          		{</p>
+<p>          			if(didoccupy[l] == tile.occupado[o][0] && didoccupy[l+1] == tile.occupado[o][1] && didoccupy[l+2] == tile.occupado[o][2]) </p>
+<p>          			{</p>
+<p>          				tile.occupado[o][0] = wouldoccupy[l]; </p>
+<p>          				tile.occupado[o][1] = wouldoccupy[l+1];</p>
+<p>          				tile.occupado[o][2] = wouldoccupy[l+2];</p>
+<p>          			}</p>
+<p>          		}</p>
+<p>          	}</p>
+<p>      	}</p>
+<p>      	else </p>
+<p>      	{</p>
+<p>      		for(uint8 ll = 0; ll < 24; ll+=3) </p>
+<p>          	{</p>
+<p>      			tile.occupado.length++;</p>
+<p>      			tile.occupado[tile.occupado.length-1][0] = wouldoccupy[ll];</p>
+<p>      			tile.occupado[tile.occupado.length-1][1] = wouldoccupy[ll+1];</p>
+<p>      			tile.occupado[tile.occupado.length-1][2] = wouldoccupy[ll+2];</p>
+<p>          	}</p>
+<p>      	}</p>
+<p>      	tile.blocks[index] = _block;</p>
+<p>      	TileChanged(col,row);</p>
+<p>    	return;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getBlocks(uint8 col, uint8 row) public constant returns (int8[5][])</p>
+<p>    {</p>
+<p>    	return tiles[col][row].blocks; </p>
+<p>    }</p>
+<p>    </p>
+<p>    function buyTile(uint8 col, uint8 row)</p>
+<p>    {    	</p>
+<p>    	if(msg.value != 1000000000000000000) </p>
+<p>		{</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		whathappened = "buyTile:ERR:val!=1eth";  </p>
+<p>    		return;</p>
+<p>		}</p>
+<p>    	</p>
+<p>    	Tile tile = tiles[col][row];</p>
+<p>    	if(tile.owner == address(0x0000000000000000000000000000000000000000)) </p>
+<p>    	{    </p>
+<p>    		if(mer.getElevation(col,row) < 125) </p>
+<p>    		{</p>
+<p>    			tx.origin.send(msg.value); </p>
+<p>    			whathappened = "buyTile:ERR:water";</p>
+<p>    			return;</p>
+<p>    		}</p>
+<p>    		else</p>
+<p>    		{	</p>
+<p>    			creator.send(msg.value); </p>
+<p>    			tile.owner = tx.origin; </p>
+<p>    			TileChanged(col,row);</p>
+<p>    			whathappened = "buyTile:OK";</p>
+<p>    			return;</p>
+<p>    		}</p>
+<p>    	}</p>
+<p>    	else</p>
+<p>    	{</p>
+<p>    		tx.origin.send(msg.value); </p>
+<p>    		whathappened = "buyTile:ERR:alr owned";</p>
+<p>    		return;</p>
+<p>    	}</p>
+<p>    }</p>
+<p>    </p>
+<p>    function blockHexCoordsValid(int8 x, int8 y) private constant returns (bool)</p>
+<p>    {</p>
+<p>    	uint absx;</p>
+<p>		uint absy;</p>
+<p>		if(x < 0)</p>
+<p>			absx = uint(x*-1);</p>
+<p>		else</p>
+<p>			absx = uint(x);</p>
+<p>		if(y < 0)</p>
+<p>			absy = uint(y*-1);</p>
+<p>		else</p>
+<p>			absy = uint(y);</p>
+<p>    	</p>
+<p>    	if(absy <= 33) </p>
+<p>    	{</p>
+<p>    		if(y % 2 != 0 ) </p>
+<p>    		{</p>
+<p>    			if(-50 <= x && x <= 49)</p>
+<p>    				return true;</p>
+<p>    		}</p>
+<p>    		else </p>
+<p>    		{</p>
+<p>    			if(absx <= 49)</p>
+<p>    				return true;</p>
+<p>    		}	</p>
+<p>    	}	</p>
+<p>    	else</p>
+<p>    	{	</p>
+<p>    		if((y >= 0 && x >= 0) || (y < 0 && x > 0)) </p>
+<p>    		{</p>
+<p>    			if(y % 2 != 0 ) </p>
+<p>    			{</p>
+<p>    				if (((absx*2) + (absy*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}	</p>
+<p>    			else </p>
+<p>    			{</p>
+<p>    				if ((((absx+1)*2) + ((absy-1)*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}</p>
+<p>    		}</p>
+<p>    		else</p>
+<p>    		{	</p>
+<p>    			if(y % 2 == 0 ) </p>
+<p>    			{</p>
+<p>    				if (((absx*2) + (absy*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}	</p>
+<p>    			else </p>
+<p>    			{</p>
+<p>    				if ((((absx+1)*2) + ((absy-1)*3)) <= 198)</p>
+<p>    					return true;</p>
+<p>    			}</p>
+<p>    		}</p>
+<p>    	}</p>
+<p>    	return false;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function isValidLocation(uint8 col, uint8 row, int8[5] _block, int8[24] wouldoccupy) private constant returns (bool)</p>
+<p>    {</p>
+<p>    	bool touches;</p>
+<p>    	Tile tile = tiles[col][row]; </p>
+<p>    	</p>
+<p>        for(uint8 b = 0; b < 24; b+=3) </p>
+<p>        	{</p>
+<p>        		if(!blockHexCoordsValid(wouldoccupy[b], wouldoccupy[b+1])) </p>
+<p>        		{</p>
+<p>        			whathappened = "editBlock:ERR:OOB";</p>
+<p>        			return false;</p>
+<p>        		}</p>
+<p>        		for(uint o = 0; o < tile.occupado.length; o++) </p>
+<p>        	 	{</p>
+<p>        			if(wouldoccupy[b] == tile.occupado[o][0] && wouldoccupy[b+1] == tile.occupado[o][1] && wouldoccupy[b+2] == tile.occupado[o][2]) </p>
+<p>        			{</p>
+<p>        				whathappened = "editBlock:ERR:conflict";</p>
+<p>        				return false; </p>
+<p>        			}</p>
+<p>        	 	}</p>
+<p>        		if(touches == false && wouldoccupy[b+2] == 0) </p>
+<p>        		{</p>
+<p>        			touches = true; </p>
+<p>        		}	</p>
+<p>        	}</p>
+<p>        </p>
+<p>        if(touches == false) </p>
+<p>		{</p>
+<p>    	 	int8[48] memory attachesto = bds.getAttachesto(uint8(_block[0]));</p>
+<p>    	 	for(uint8 a = 0; a < 48 && !touches; a+=3) </p>
+<p>    	 	{</p>
+<p>    	 		if(attachesto[a] == 0 && attachesto[a+1] == 0 && attachesto[a+2] == 0) </p>
+<p>    	 			break;</p>
+<p>    	 		attachesto[a+1] = attachesto[a+1]+_block[2];</p>
+<p>    	  		if(attachesto[1] % 2 != 0 && attachesto[a+1] % 2 == 0) </p>
+<p>    	  			attachesto[a] = attachesto[a]+1; </p>
+<p>    	  		for(o = 0; o < tile.occupado.length && !touches; o++)</p>
+<p>    	  		{</p>
+<p>    	  			if((attachesto[a]+_block[1]) == tile.occupado[o][0] && attachesto[a+1] == tile.occupado[o][1] && (attachesto[a+2]+_block[3]) == tile.occupado[o][2]) </p>
+<p>    	  			{</p>
+<p>    	  				whathappened = "editBlock:OK:attached";</p>
+<p>    	  				return true; </p>
+<p>    	  			}</p>
+<p>    	  		}</p>
+<p>    	 	}</p>
+<p>    	 	whathappened = "editBlock:ERR:floating";</p>
+<p>    	 	return false; </p>
+<p>		}</p>
+<p>        else </p>
+<p>        {</p>
+<p>        	whathappened = "editBlock:OK:ground";</p>
+<p>        	return true;</p>
+<p>        }	</p>
+<p>    } </p>
+<p>    </p>
+<p>    string whathappened;</p>
+<p>    function getWhatHappened() public constant returns (string)</p>
+<p>    {</p>
+<p>    	return whathappened;</p>
+<p>    }</p>
+<p></p>
+<p>   function() </p>
+<p>   {</p>
+<p>	   tx.origin.send(msg.value);</p>
+<p>   }</p>
+<p>   </p>
+<p>   function empty() </p>
+<p>   {</p>
+<p>	   creator.send(address(this).balance); </p>
+<p>   }</p>
+<p>   </p>
+<p>   bool locked;</p>
+<p>   function setLocked()</p>
+<p>   {</p>
+<p>	   if (msg.sender == creator)</p>
+<p>		   locked = true;</p>
+<p>   }</p>
+<p>   function getLocked() public constant returns (bool)</p>
+<p>   {</p>
+<p>	   return locked;</p>
+<p>   }</p>
+<p>   function kill()</p>
+<p>   { </p>
+<p>	   if (!getLocked() && msg.sender == creator)</p>
+<p>		   suicide(creator); </p>
+<p>   }</p>
+<p>}</p>
+    </div>
+</div>
+    
+         <div id="MER" class="sub-tab-pane" style="display:none"><p><strong>:: Map Elevation Data and Storage (All versions)- October 18, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0x68549d7dbb7a956f955ec1263f55494f05972a6b</p><br><p><Strong>Source Code:</Strong></p>
+          <div class="code-container">
+<p>contract MapElevationStorage</p>
+<p>{</p>
+<p>    uint8[1089] elevations;</p>
+<p>    address creator;</p>
+<p>    function MapElevationStorage()</p>
+<p>    {</p>
+<p>        creator = msg.sender;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getElevations() constant returns (uint8[1089])</p>
+<p>    {</p>
+<p>        return elevations;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getElevation(uint8 col, uint8 row) constant returns (uint8)</p>
+<p>    {</p>
+<p>        return elevations[uint(col) * 33 + uint(row)];</p>
+<p>    }</p>
+<p>    </p>
+<p>    function initElevations(uint8 col, uint8[33] _elevations) public </p>
+<p>    {</p>
+<p>        if(locked) </p>
+<p>            return;</p>
+<p>        uint skip = (uint(col) * 33); </p>
+<p>        uint counter = 0;</p>
+<p>        while(counter < 33)</p>
+<p>        {</p>
+<p>            elevations[counter+skip] = _elevations[counter];</p>
+<p>            counter++;</p>
+<p>        }   </p>
+<p>    }</p>
+<p>    </p>
+<p>    bool locked;</p>
+<p>    function setLocked()</p>
+<p>    {</p>
+<p>        locked = true;</p>
+<p>    }</p>
+<p>    function getLocked() public constant returns (bool)</p>
+<p>    {</p>
+<p>        return locked;</p>
+<p>    }</p>
+<p>    function kill()</p>
+<p>    { </p>
+<p>        if (!locked && msg.sender == creator)</p>
+<p>            suicide(creator);</p>
+<p>    }</p>
+<p>}</p> 
+    </div><br><br>
+             <p><strong>Map Elevation Heights: </strong>(Organized by column 0-32 // Rows organized left to right 0-32)</p>
+              <div class="code-container">
+                  <p>0: 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116</p>
+<p>1: 116, 108, 116, 114, 119, 120, 127, 107, 115, 96, 105, 89, 116, 151, 132, 145, 120, 108, 110, 99, 120, 93, 118, 106, 115, 146, 133, 140, 119, 95, 106, 118, 116</p>
+<p>2: 116, 116, 117, 119, 122, 130, 139, 126, 114, 104, 95, 105, 116, 132, 149, 137, 125, 115, 105, 115, 125, 122, 120, 117, 115, 132, 150, 136, 122, 109, 97, 106, 116</p>
+<p>3: 116, 111, 119, 109, 125, 114, 130, 110, 113, 93, 105, 96, 116, 151, 137, 159, 129, 151, 119, 144, 129, 114, 122, 113, 114, 99, 135, 129, 125, 110, 109, 91, 116</p>
+<p>4: 116, 119, 122, 125, 129, 125, 121, 117, 113, 114, 115, 116, 117, 121, 125, 129, 134, 134, 134, 134, 134, 129, 124, 119, 114, 117, 121, 125, 129, 125, 122, 119, 116</p>
+<p>5: 116, 87, 103, 139, 125, 97, 119, 109, 112, 132, 119, 120, 120, 121, 135, 127, 138, 119, 126, 148, 133, 105, 108, 85, 113, 142, 126, 138, 125, 132, 115, 118, 116</p>
+<p>6: 116, 100, 85, 103, 121, 119, 118, 114, 111, 117, 123, 123, 124, 134, 145, 144, 143, 130, 118, 125, 133, 112, 92, 102, 113, 122, 132, 126, 121, 114, 108, 112, 116</p>
+<p>7: 116, 124, 99, 97, 117, 119, 114, 114, 110, 110, 121, 149, 127, 159, 143, 179, 148, 107, 130, 126, 133, 93, 107, 115, 113, 111, 122, 138, 117, 121, 111, 108, 116</p>
+<p>8: 116, 115, 114, 113, 113, 112, 111, 110, 110, 115, 120, 125, 131, 136, 142, 147, 153, 148, 143, 138, 133, 128, 123, 118, 113, 113, 113, 113, 114, 114, 115, 115, 116</p>
+<p>9: 116, 107, 101, 93, 113, 85, 108, 98, 115, 147, 132, 117, 128, 129, 158, 133, 157, 181, 146, 172, 141, 107, 125, 148, 118, 131, 119, 116, 120, 100, 117, 93, 116</p>
+<p>10: 116, 102, 89, 101, 113, 109, 106, 113, 120, 132, 144, 134, 125, 150, 175, 168, 162, 156, 150, 149, 149, 138, 127, 125, 123, 124, 125, 125, 126, 122, 119, 117, 116</p>
+<p>11: 116, 119, 101, 114, 113, 106, 114, 123, 125, 160, 134, 114, 122, 169, 160, 153, 166, 144, 159, 183, 157, 115, 138, 104, 128, 102, 130, 134, 132, 151, 123, 129, 116</p>
+<p>12: 116, 115, 114, 113, 113, 117, 122, 126, 131, 128, 125, 122, 119, 132, 145, 158, 171, 169, 168, 167, 166, 157, 149, 141, 133, 134, 135, 136, 138, 132, 127, 121, 116</p>
+<p>13: 116, 120, 129, 139, 118, 151, 131, 116, 136, 165, 138, 147, 132, 104, 133, 170, 175, 216, 184, 192, 167, 178, 136, 138, 138, 117, 135, 114, 137, 113, 139, 146, 116</p>
+<p>14: 116, 130, 145, 134, 123, 131, 140, 141, 142, 147, 152, 148, 145, 133, 122, 151, 180, 190, 200, 184, 168, 145, 123, 133, 143, 139, 135, 135, 136, 144, 152, 134, 116</p>
+<p>15: 116, 119, 135, 146, 128, 147, 141, 154, 147, 184, 157, 173, 158, 124, 151, 174, 185, 195, 190, 197, 169, 154, 142, 169, 148, 148, 139, 121, 135, 129, 138, 100, 116</p>
+<p>16: 116, 120, 125, 129, 134, 138, 143, 148, 153, 157, 162, 166, 171, 175, 180, 185, 190, 185, 180, 175, 171, 166, 162, 157, 153, 148, 143, 138, 134, 129, 125, 120, 116</p>
+<p>17: 116, 91, 121, 142, 123, 117, 128, 155, 150, 139, 156, 200, 175, 200, 178, 174, 185, 157, 181, 206, 173, 150, 143, 128, 144, 151, 130, 129, 122, 97, 105, 88, 116</p>
+<p>18: 116, 117, 118, 115, 112, 113, 114, 131, 148, 149, 150, 164, 179, 177, 176, 178, 180, 181, 183, 179, 175, 150, 125, 130, 136, 127, 118, 114, 110, 98, 86, 101, 116</p>
+<p>19: 116, 118, 110, 110, 101, 92, 115, 143, 145, 136, 157, 143, 183, 180, 177, 216, 175, 141, 179, 201, 177, 148, 137, 158, 128, 121, 110, 123, 98, 110, 93, 122, 116</p>
+<p>20: 116, 109, 103, 96, 90, 103, 116, 129, 143, 154, 165, 176, 187, 183, 179, 175, 171, 173, 175, 177, 179, 164, 149, 134, 120, 111, 103, 95, 87, 94, 101, 108, 116</p>
+<p>21: 116, 126, 111, 103, 98, 100, 123, 120, 140, 169, 156, 199, 176, 208, 168, 166, 166, 166, 174, 139, 164, 127, 131, 114, 112, 126, 100, 97, 90, 90, 95, 117, 116</p>
+<p>22: 116, 117, 119, 113, 107, 118, 130, 134, 138, 142, 147, 156, 165, 161, 158, 160, 162, 167, 173, 161, 149, 131, 113, 108, 104, 101, 98, 96, 94, 92, 90, 103, 116</p>
+<p>23: 116, 139, 119, 110, 116, 99, 129, 134, 136, 109, 142, 119, 154, 154, 153, 156, 157, 158, 154, 132, 134, 98, 108, 100, 96, 98, 96, 117, 98, 92, 99, 130, 116</p>
+<p>24: 116, 118, 120, 122, 125, 127, 129, 131, 134, 136, 138, 140, 143, 145, 148, 150, 153, 144, 136, 128, 120, 112, 104, 96, 88, 91, 95, 98, 102, 105, 109, 112, 116</p>
+<p>25: 116, 93, 105, 108, 114, 122, 116, 110, 131, 104, 119, 101, 136, 108, 144, 147, 148, 167, 136, 132, 118, 102, 117, 99, 91, 108, 107, 117, 108, 88, 105, 116, 116</p>
+<p>26: 116, 103, 91, 97, 103, 103, 103, 116, 129, 114, 100, 115, 130, 135, 140, 141, 143, 139, 136, 126, 117, 123, 130, 112, 95, 107, 120, 117, 115, 108, 102, 109, 116</p>
+<p>27: 116, 99, 95, 108, 92, 112, 103, 100, 127, 93, 110, 90, 124, 150, 133, 166, 138, 152, 130, 133, 115, 143, 119, 123, 98, 115, 117, 108, 121, 99, 112, 94, 116</p>
+<p>28: 116, 107, 99, 90, 82, 92, 103, 114, 125, 123, 121, 119, 118, 122, 126, 130, 134, 129, 124, 119, 114, 111, 108, 105, 102, 108, 115, 121, 128, 125, 122, 119, 116</p>
+<p>29: 116, 97, 101, 75, 90, 88, 95, 83, 122, 105, 109, 115, 117, 126, 115, 141, 129, 129, 128, 122, 114, 112, 120, 112, 105, 92, 119, 98, 125, 122, 123, 143, 116</p>
+<p>30: 116, 109, 103, 101, 99, 93, 87, 103, 120, 108, 97, 107, 117, 110, 104, 114, 125, 129, 133, 124, 115, 124, 133, 121, 109, 116, 124, 123, 122, 123, 125, 120, 116</p>
+<p>31: 116, 87, 109, 101, 107, 121, 101, 95, 118, 114, 106, 87, 116, 111, 110, 96, 120, 107, 124, 96, 115, 127, 124, 94, 112, 108, 120, 112, 119, 146, 120, 110, 116</p>
+<p>32: 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116</p>
+                  </div>
+</div>
+
+         <div id="BDS0" class="sub-tab-pane" style="display:none"><p><strong>:: Block Definition Storage for v0.9 & v1.0 - October 17, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0x782bDf7015b71b64F6750796DD087FDE32fD6FdC</p><br><p><Strong>Source Code:</Strong></p>
+     <div class="code-container">
+         <p>contract BlockDefStorage</p>
+<p>{</p>
+<p>    bool locked;</p>
+<p>    </p>
+<p>    Block[32] blocks;</p>
+<p>    struct Block</p>
+<p>    {</p>
+<p>        int8[24] occupies;</p>
+<p>        int8[48] attachesto;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getOccupies(uint8 which) public constant returns (int8[24])</p>
+<p>    {</p>
+<p>        return blocks[which].occupies;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getAttachesto(uint8 which) public constant returns (int8[48])</p>
+<p>    {</p>
+<p>        return blocks[which].attachesto;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getLocked() public constant returns (bool)</p>
+<p>    {</p>
+<p>        return locked;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function setLocked() </p>
+<p>    {</p>
+<p>        locked = true;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function initOccupies(uint8 which, int8[3][8] occupies) public </p>
+<p>    {</p>
+<p>        if(locked) </p>
+<p>            return;</p>
+<p>        uint counter = 0;</p>
+<p>        for(uint8 index = 0; index < 8; index++)</p>
+<p>        {</p>
+<p>            for(uint8 subindex = 0; subindex < 3; subindex++)</p>
+<p>            {</p>
+<p>                blocks[which].occupies[counter] = occupies[index][subindex];</p>
+<p>                counter++;</p>
+<p>            }</p>
+<p>        }   </p>
+<p>    }</p>
+<p>    </p>
+<p>    function initAttachesto(uint8 which, int8[3][16] attachesto) public</p>
+<p>    {</p>
+<p>        if(locked) </p>
+<p>            return;</p>
+<p>        uint counter = 0;</p>
+<p>        for(uint8 index = 0; index < 16; index++)</p>
+<p>        {</p>
+<p>            for(uint8 subindex = 0; subindex < 3; subindex++)</p>
+<p>            {</p>
+<p>                blocks[which].attachesto[counter] = attachesto[index][subindex];</p>
+<p>                counter++;</p>
+<p>            }</p>
+<p>        }   </p>
+<p>    }</p>
+<p>}</p>
+    </div><br><br>
+    <p><strong>Blocks getOccupies</strong></p>
+    <div class="code-container">
+<p>0: ["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7"]</p><br><br>
+<p>1: ["0","0","0","0","1","0","1","2","0","1","3","0","2","4","0","2","5","0","3","6","0","3","7","0"]</p>
+<p>2: ["0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0","0"]</p>
+<p>3: ["0","0","0","-1","1","0","-1","2","0","-2","3","0","-2","4","0","-3","5","0","-3","6","0","-4","7","0"]</p>
+<p>4: ["0","0","0","1","0","0","1","1","0","2","1","0","3","2","0","4","2","0","4","3","0","5","3","0"]</p>
+<p>5: ["0","0","0","-1","0","0","-2","1","0","-3","1","0","-3","2","0","-4","2","0","-5","3","0","-6","3","0"]</p>
+<p>6: ["0","0","0","1","0","0","0","0","1","1","0","1","0","0","2","1","0","2","0","0","3","1","0","3"]</p>
+<p>7: ["0","0","0","0","1","0","0","0","1","0","1","1","0","0","2","0","1","2","0","0","3","0","1","3"]</p>
+<p>8: ["0","0","0","-1","1","0","0","0","1","-1","1","1","0","0","2","-1","1","2","0","0","3","-1","1","3"]</p>
+<p>9: ["0","0","0","0","1","0","1","2","0","1","3","0","0","0","1","0","1","1","1","2","1","1","3","1"]</p>
+<p>10: ["0","0","0","1","0","0","2","0","0","3","0","0","0","0","1","1","0","1","2","0","1","3","0","1"]</p>
+<p>11: ["0","0","0","-1","1","0","-1","2","0","-2","3","0","0","0","1","-1","1","1","-1","2","1","-2","3","1"]</p>
+<p>12: ["0","0","0","1","0","0","1","1","0","2","1","0","0","0","1","1","0","1","1","1","1","2","1","1"]</p>
+<p>13: ["0","0","0","-1","0","0","-2","1","0","-3","1","0","0","0","1","-1","0","1","-2","1","1","-3","1","1"]</p>
+<p>14: ["0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0"]</p>
+<p>15: ["0","0","0","-1","1","0","0","2","0","-1","3","0","0","4","0","-1","5","0","0","6","0","-1","7","0"]</p>
+<p>16: ["0","0","0","0","1","0","0","2","0","0","3","0","0","0","1","0","1","1","0","2","1","0","3","1"]</p>
+<p>17: ["0","0","0","-1","1","0","0","2","0","-1","3","0","0","0","1","-1","1","1","0","2","1","-1","3","1"]</p>
+<p>18: ["0","0","0","0","1","0","0","1","1","1","2","1","1","2","2","1","3","2","1","3","3","2","4","3"]</p>
+<p>19: ["0","0","0","1","0","0","1","0","1","2","0","1","2","0","2","3","0","2","3","0","3","4","0","3"]</p>
+<p>20: ["0","0","0","0","-1","0","0","-1","1","1","-2","1","1","-2","2","1","-3","2","1","-3","3","2","-4","3"]</p>
+<p>21: ["0","0","0","-1","-1","0","-1","-1","1","-1","-2","1","-1","-2","2","-2","-3","2","-2","-3","3","-2","-4","3"]</p>
+<p>22: ["0","0","0","-1","0","0","-1","0","1","-2","0","1","-2","0","2","-3","0","2","-3","0","3","-4","0","3"]</p>
+<p>23: ["0","0","0","-1","1","0","-1","1","1","-1","2","1","-1","2","2","-2","3","2","-2","3","3","-2","4","3"]</p>
+<p>24: ["0","0","0","0","0","1","0","0","2","0","1","2","1","2","2","1","3","2","1","3","1","1","3","0"]</p>
+<p>25: ["0","0","0","0","0","1","0","0","2","1","0","2","2","0","2","3","0","2","3","0","1","3","0","0"]</p>
+<p>26: ["0","0","0","0","0","1","0","0","2","0","-1","2","1","-2","2","1","-3","2","1","-3","1","1","-3","0"]</p>
+<p>27: ["0","0","0","0","0","1","0","0","2","1","0","2","1","1","2","1","2","2","1","2","1","1","2","0"]</p>
+<p>28: ["0","0","0","0","0","1","0","0","2","-1","-1","2","0","-2","2","1","-2","2","1","-2","1","1","-2","0"]</p>
+<p>29: ["0","0","0","0","0","1","0","0","2","-1","0","2","-2","-1","2","-1","-2","2","-1","-2","1","-1","-2","0"]</p>
+<p>30: ["0","0","0","0","0","1","0","0","2","0","1","2","0","2","2","-1","2","2","-1","2","1","-1","2","0"]</p>
+<p>31: ["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","-1","1","0","-1","-1","0","1","0","0"]</p>
+    </div><br><br>
+    <p><strong>Blocks getAttachesto:</strong></p>
+    <div class="code-container">
+ <p>0: ["0","0","-1","0","0","8","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>1: ["0","0","-1","0","1","-1","1","2","-1","1","3","-1","2","4","-1","2","5","-1","3","6","-1","3","7","-1","0","0","1","0","1","1","1","2","1","1","3","1","2","4","1","2","5","1","3","6","1","3","7","1"]</p>
+<p>2: ["0","0","-1","1","0","-1","2","0","-1","3","0","-1","4","0","-1","5","0","-1","6","0","-1","7","0","-1","0","0","1","1","0","1","2","0","1","3","0","1","4","0","1","5","0","1","6","0","1","7","0","1"]</p>
+<p>3: ["0","0","-1","-1","1","-1","-1","2","-1","-2","3","-1","-2","4","-1","-3","5","-1","-3","6","-1","-4","7","-1","0","0","1","-1","1","1","-1","2","1","-2","3","1","-2","4","1","-3","5","1","-3","6","1","-4","7","1"]</p>
+<p>4: ["0","0","-1","1","0","-1","1","1","-1","2","1","-1","3","2","-1","4","2","-1","4","3","-1","5","3","-1","0","0","1","1","0","1","1","1","1","2","1","1","3","2","1","4","2","1","4","3","1","5","3","1"]</p>
+<p>5: ["0","0","-1","-1","0","-1","-2","1","-1","-3","1","-1","-3","2","-1","-4","2","-1","-5","3","-1","-6","3","-1","0","0","1","-1","0","1","-2","1","1","-3","1","1","-3","2","1","-4","2","1","-5","3","1","-6","3","1"]</p>
+<p>6: ["0","0","-1","1","0","-1","0","0","4","1","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>7: ["0","0","-1","0","1","-1","0","0","4","0","1","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>8: ["0","0","-1","-1","1","-1","0","0","4","-1","1","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>9: ["0","0","-1","0","1","-1","1","2","-1","1","3","-1","0","0","2","0","1","2","1","2","2","1","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>10: ["0","0","-1","1","0","-1","2","0","-1","3","0","-1","0","0","2","1","0","2","2","0","2","3","0","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>11: ["0","0","-1","-1","1","-1","-1","2","-1","-2","3","-1","0","0","2","-1","1","2","-1","2","2","-2","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>12: ["0","0","-1","1","0","-1","1","1","-1","2","1","-1","0","0","2","1","0","2","1","1","2","2","1","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>13: ["0","0","-1","-1","0","-1","-2","1","-1","-3","1","-1","0","0","2","-1","0","2","-2","1","2","-3","1","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>14: ["0","0","-1","0","1","-1","0","2","-1","0","3","-1","0","4","-1","0","5","-1","0","6","-1","0","7","-1","0","0","1","0","1","1","0","2","1","0","3","1","0","4","1","0","5","1","0","6","1","0","7","1"]</p>
+<p>15: ["0","0","-1","-1","1","-1","0","2","-1","-1","3","-1","0","4","-1","-1","5","-1","0","6","-1","-1","7","-1","0","0","1","-1","1","1","0","2","1","-1","3","1","0","4","1","-1","5","1","0","6","1","-1","7","1"]</p>
+<p>16: ["0","0","-1","0","1","-1","0","2","-1","0","3","-1","0","0","2","0","1","2","0","2","2","0","3","2","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>17: ["0","0","-1","-1","1","-1","0","2","-1","-1","3","-1","0","0","2","-1","1","2","0","2","2","-1","3","1","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>18: ["0","0","-1","0","1","-1","1","2","0","1","3","1","2","4","2","0","0","1","0","1","2","1","2","3","1","3","4","2","4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>19: ["0","0","-1","1","0","-1","2","0","0","3","0","1","4","0","2","0","0","1","1","0","2","2","0","3","3","0","4","4","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>20: ["0","0","-1","0","-1","-1","1","-2","0","1","-3","1","2","-4","2","0","0","1","0","-1","2","1","-2","3","1","-3","4","2","-4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>21: ["0","0","-1","-1","-1","-1","-1","-2","0","-2","-3","1","-2","-4","2","0","0","1","-1","-1","2","-1","-2","3","-2","-3","4","-2","-4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>22: ["0","0","-1","-1","0","-1","-2","0","0","-3","0","1","-4","0","2","0","0","1","-1","0","2","-2","0","3","-3","0","4","-4","0","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>23: ["0","0","-1","-1","1","-1","-1","2","0","-2","3","1","-2","4","2","0","0","1","-1","1","2","-1","2","3","-2","3","4","-2","4","4","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>24: ["0","0","-1","0","1","1","1","2","1","1","3","-1","0","0","3","0","1","3","1","2","3","1","3","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>25: ["0","0","-1","1","0","1","2","0","1","3","0","-1","0","0","3","1","0","3","2","0","3","3","0","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>26: ["0","0","-1","0","-1","1","1","-2","1","1","-3","-1","0","0","3","0","-1","3","1","-2","3","1","-3","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>27: ["0","0","-1","1","0","1","1","1","1","1","2","-1","0","0","3","1","0","3","1","1","3","1","2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>28: ["0","0","-1","-1","-1","1","0","-2","1","1","-2","-1","0","0","3","-1","-1","3","0","-2","3","1","-2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>29: ["0","0","-1","-1","0","1","-2","-1","1","-1","-2","-1","0","0","3","-1","0","3","-2","-1","3","-1","-2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>30: ["0","0","-1","0","1","1","0","2","1","-1","2","-1","0","0","3","0","1","3","0","2","3","-1","2","3","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+<p>31: ["0","0","-1","-1","1","-1","-1","-1","-1","1","0","-1","0","0","5","-1","1","1","-1","-1","1","1","0","1","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]</p>
+        </div>
+</div>
+
+     <div id="BDS1" class="sub-tab-pane" style="display:none"><p><strong>:: Block Definition Storage for v1.1 & v1.2 - October 29, 2015 ::</strong></p><br><p><strong>Contract Address:</strong> 0xd4e686a1fbf1bfe058510f07cd3936d3d5a70589</p><br><p><Strong>Source Code:</Strong></p>
+     <div class="code-container">
+         <p>contract BlockDefStorage</p>
+<p>{</p>
+<p>    Block[18] blocks;</p>
+<p>    struct Block</p>
+<p>    {</p>
+<p>        int8[24] occupies; </p>
+<p>        int8[48] attachesto; </p>
+<p>    }</p>
+<p>    </p>
+<p>    address creator;</p>
+<p>    function BlockDefStorage()</p>
+<p>    {</p>
+<p>        creator = msg.sender;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getOccupies(uint8 which) public constant returns (int8[24])</p>
+<p>    {</p>
+<p>        return blocks[which].occupies;</p>
+<p>    }</p>
+<p>    </p>
+<p>    function getAttachesto(uint8 which) public constant returns (int8[48])</p>
+<p>    {</p>
+<p>        return blocks[which].attachesto;</p>
+<p>    }</p>
+<p></p>
+<p>    function initOccupies(uint8 which, int8[24] occupies) public </p>
+<p>    {</p>
+<p>        if(locked) </p>
+<p>            return;</p>
+<p>        for(uint8 index = 0; index < 24; index++)</p>
+<p>        {</p>
+<p>            blocks[which].occupies[index] = occupies[index];</p>
+<p>        }   </p>
+<p>    }</p>
+<p>    </p>
+<p>    function initAttachesto(uint8 which, int8[48] attachesto) public</p>
+<p>    {</p>
+<p>        if(locked) </p>
+<p>            return;</p>
+<p>        for(uint8 index = 0; index < 48; index++)</p>
+<p>        {</p>
+<p>            blocks[which].attachesto[index] = attachesto[index];</p>
+<p>        }   </p>
+<p>    }</p>
+<p>    </p>
+<p>    bool locked;</p>
+<p>    function setLocked()</p>
+<p>    {</p>
+<p>        locked = true;</p>
+<p>    }</p>
+<p>    function getLocked() public constant returns (bool)</p>
+<p>    {</p>
+<p>        return locked;</p>
+<p>    }</p>
+<p>    function kill()</p>
+<p>    { </p>
+<p>        if (!locked && msg.sender == creator)</p>
+<p>            suicide(creator);</p>
+<p>    }</p>
+<p>}</p>
+     </div>
+</div>
+    
+            
+            <button class="close-modal" id="modal-close">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+    <div id="hex-modal-overlay" class="modal-overlay" style="align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 2500;">
+    <div id="hex-modal-content" style="width: 85%; height: 85%; background: #000; border: 1px solid #00ff66; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+        
+        <div id="ui-hex" style="position: absolute; top: 20px; left: 20px; z-index: 2600; pointer-events: none;">
+            <div style="background: rgba(0,10,0,0.9); border: 1px solid #00ff66; padding: 15px; pointer-events: auto; color: #00ff66; font-family: monospace;">
+                <h2 style="margin:0; font-size:16px; letter-spacing: 1px;">ETHERIA TILE SPACE</h2>
+                <div style="font-size: 11px; color: #88ffaa; margin-top: 5px;">GRID: 9,901 Hexes</div>
+                <div id="hex-coords-display" style="margin-top:10px; color:#fff; font-weight: bold; font-size: 14px;">(0, 0, 0) - Center</div>
+            </div>
+        </div>
+
+        <button id="hex-modal-close" style="position: absolute; right: 20px; top: 20px; z-index: 2600; width: auto; padding: 10px 20px; background: #000; border: 1px solid #00ff66; color: #00ff66; cursor: pointer; font-family: monospace;">✕ CLOSE</button>
+        
+        <div id="hex-canvas-container" style="width: 100%; height: 100%; cursor: crosshair;"></div>
+    </div>
+</div>
+
+    <button id="menu-toggle">☰ MENU</button>
+
+    <div id="sidebar">
+        <div class="logo-container">
+            <img src="https://www.etheria.world/images/etheria_logo_white.png" alt="Etheria Logo">
+        </div>
+        
+        <button id="test-btn">HISTORICAL RESOURCES</button>
+        <button id="boundary-btn">TILE LAYOUT MATRIX</button>
+        <a href="https://ipfs.io/ipfs/QmZFWz21Vz8pPufwYTVrsD5h4zrzrA8VRjf1BNNv19XH6Q" target="_blank">
+    <button style="
+        background: #1a1a1a; 
+        color: #ffffff; 
+        border: 1px solid #333; 
+        padding: 10px 20px; 
+        font-family: 'Courier New', monospace; 
+        cursor: pointer;
+        text-transform: uppercase;">
+        ETHERIA BLOCKS
+    </button>
+</a>
+
+        <h3>Tools</h3>
+        <div class="control-group">
+            <button id="topo-btn">HEIGHT MAP</button>
+            <button id="coords-btn">COORD GRID</button>
+        </div>
+
+        <h3>Filters 
+            <span class="info-icon">i
+                <span class="tooltip-text">
+                    A height score is created by adding the difference between all adjacent side heights of tiles surrounding that specific tile. Look at a height score as a "height dominance" filter.
+                </span>
+            </span>
+        </h3>
+        <div class="control-group">
+            <button id="peaks-btn">SUMMIT PEAKS</button>
+            <button id="pits-btn">DEEP PITS</button>
+            <button id="hscore-btn">HEIGHT SCORE</button>
+            <div id="hscore-slider-cont" style="display:none; margin-top: 5px;">
+                <label id="hscore-label" style="color: var(--neutral-orange);">MIN SCORE: ALL</label>
+                <input type="range" id="hscore-filter">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label id="filter-label" style="color: var(--coast-sand);">COASTAL VIEW: OFF</label>
+            <input type="range" id="side-filter" min="-1" max="6" value="-1" step="1">
+        </div>
+
+        <div style="margin-top: auto; font-size: 9px; color: #696969; text-align: center; padding: 20px 0 5px 0;">
+            A Historic Blockchain Collectible // Est. 2015
+        </div>
+    </div>
+
+    <div id="map-container">
+        <div id="info-popup">
+            <div id="popup-coords" style="font-weight: bold; color: var(--primary-green); margin-bottom: 3px; font-size: 12px;"></div>
+            <div id="popup-height" style="font-size: 11px;"></div>
+            <div id="popup-hscore" style="font-size: 11px; color: var(--neutral-orange);"></div>
+            <div id="popup-status" style="font-size: 10px; margin-top:4px; padding-top: 4px; border-top: 1px solid #333;"></div>
+        </div>
+    </div>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+    
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+function isHexValid(x, y) {
+    const absY = Math.abs(y);
+    if (absY > 66) return false;
+
+    // Central Belt (-33 to 33)
+    if (absY <= 33) {
+        // Mirrored stagger logic
+        if (y % 2 !== 0) return (x >= -50 && x <= 49);
+        return (x >= -49 && x <= 49);
+    }
+
+    // Slanted Caps (34 to 66 and -34 to -66)
+    const distanceToPole = absY - 33;
+    const shrink = Math.floor(distanceToPole * 1.5);
+    
+    let leftWall = -50 + shrink;
+    let rightWall = 49 - shrink;
+
+    if (y % 2 !== 0) {
+        return (x >= leftWall && x <= rightWall);
+    } else {
+        return (x >= leftWall + 1 && x <= rightWall);
+    }
+}
+
+    // UI Elements
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const testBtn = document.getElementById('test-btn');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalClose = document.getElementById('modal-close');
+
+    // Boundary Modal UI Elements
+const boundaryBtn = document.getElementById('boundary-btn');
+const hexModal = document.getElementById('hex-modal-overlay');
+const hexClose = document.getElementById('hex-modal-close');
+const hexContainer = document.getElementById('hex-canvas-container');
+const hexCoordDisplay = document.getElementById('hex-coords-display');
+
+// Initialize Second Scene
+const hexScene = new THREE.Scene();
+const hexCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
+hexCamera.position.set(0, 250, 0);
+
+const hexRenderer = new THREE.WebGLRenderer({ antialias: true });
+hexRenderer.setSize(1, 1); // Start tiny, resized on open
+hexContainer.appendChild(hexRenderer.domElement);
+
+const hexControls = new OrbitControls(hexCamera, hexRenderer.domElement);
+hexScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+// Materials for Boundary Map
+const hexTileGroup = new THREE.Group();
+const hexGeom = new THREE.CircleGeometry(0.9, 6);
+const hexMatStd = new THREE.MeshBasicMaterial({ color: 0x003311, side: THREE.DoubleSide });
+const hexMatGold = new THREE.MeshBasicMaterial({ color: 0xFFD700, side: THREE.DoubleSide });
+const hexMatNeon = new THREE.MeshBasicMaterial({ color: 0x39FF14, side: THREE.DoubleSide });
+const hexMatSel = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, side: THREE.DoubleSide });
+const hexMatWire = new THREE.LineBasicMaterial({ color: 0x00ff66, transparent: true, opacity: 0.15 });
+
+// Build the Boundary Map
+const cornerCoords = [
+    {x: 0, y: 66}, {x: 0, y: -66},
+    {x: 49, y: 33}, {x: 49, y: -33},
+    {x: -50, y: 33}, {x: -50, y: -33}
+];
+for (let y = -66; y <= 66; y++) {
+    for (let x = -100; x <= 100; x++) {
+        if (isHexValid(x, y)) {
+            let mat = hexMatStd;
+            if (x === 0 && y === 0) mat = hexMatGold;
+            else if (cornerCoords.some(c => c.x === x && c.y === y)) mat = hexMatNeon;
+
+const mesh = new THREE.Mesh(hexGeom, mat);
+
+// Constants for spacing
+const hexWidth = Math.sqrt(3);
+const hexHeight = 1.5;
+
+// 1. Calculate the Mirrored X
+let mirroredX = -x; 
+let xPos = mirroredX * hexWidth;
+
+// Adjust for the staggered row shift
+if (Math.abs(y) % 2 !== 0) xPos -= hexWidth / 2;
+let zPos = y * hexHeight;
+
+// 2. APPLY THE 180° FLIP:
+// Negating both xPos and zPos rotates the entire layout 180 degrees around the center
+mesh.position.set(-xPos, 0, -zPos);
+
+// Standard hex orientation
+mesh.rotation.set(-Math.PI / 2, 0, Math.PI / 6);
+            mesh.userData = { x, y, originalMat: mat };
+
+            const edges = new THREE.EdgesGeometry(hexGeom);
+            const line = new THREE.LineSegments(edges, hexMatWire);
+            line.position.copy(mesh.position);
+            line.rotation.copy(mesh.rotation);
+
+            hexTileGroup.add(mesh, line);
+        }
+    }
+}
+hexScene.add(hexTileGroup);
+
+let selectedHex = null;
+hexRenderer.domElement.addEventListener('click', (event) => {
+    const rect = hexRenderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, hexCamera);
+    const intersects = raycaster.intersectObjects(hexTileGroup.children);
+    const hit = intersects.find(i => i.object.type === "Mesh");
+
+    if (hit) {
+        if (selectedHex) selectedHex.material = selectedHex.userData.originalMat;
+        selectedHex = hit.object;
+        selectedHex.material = hexMatSel;
+        hexCoordDisplay.innerText = `(${selectedHex.userData.x}, ${selectedHex.userData.y}, 0)`;
+    }
+});
+
+// Open/Close Handlers
+boundaryBtn.addEventListener('click', () => {
+    hexModal.style.display = 'flex';
+    const rect = hexContainer.getBoundingClientRect();
+    hexCamera.aspect = rect.width / rect.height;
+    hexCamera.updateProjectionMatrix();
+    hexRenderer.setSize(rect.width, rect.height);
+});
+
+hexClose.addEventListener('click', () => { hexModal.style.display = 'none'; });
+
+    // Global function for tabs
+    window.openTab = function(evt, tabId) {
+        let i, tabcontent, tablinks;
+        
+        // Handle Top Level vs Sub Level
+        const isSubTab = evt.currentTarget.classList.contains('sub-tab-btn');
+        const contentClass = isSubTab ? "sub-tab-pane" : "tab-pane";
+        const btnClass = isSubTab ? "sub-tab-btn" : "tab-btn";
+
+        tabcontent = document.getElementsByClassName(contentClass);
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+            tabcontent[i].classList.remove("active");
+        }
+
+        tablinks = document.getElementsByClassName(btnClass);
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        document.getElementById(tabId).style.display = "block";
+        document.getElementById(tabId).classList.add("active");
+        evt.currentTarget.className += " active";
+    }
+
+        window.onclick = function(event) {
+        const overlay = document.getElementById('modal-overlay');
+        // If the user clicks the overlay background itself, hide it
+        if (event.target == overlay) {
+            overlay.style.display = "none";
+        }
+    }
+    
+    // Modal Logic
+    testBtn.addEventListener('click', () => { 
+        modalOverlay.style.display = 'flex'; 
+        // Reset to Summary tab on open
+        document.querySelector('.tab-btn').click(); 
+    });
+    modalClose.addEventListener('click', () => { modalOverlay.style.display = 'none'; });
+
+    menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+        menuToggle.innerText = sidebar.classList.contains('mobile-open') ? '✕ CLOSE' : '☰ MENU';
+    });
+
+    const rawData = [[116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116], [116, 108, 116, 114, 119, 120, 127, 107, 115, 96, 105, 89, 116, 151, 132, 145, 120, 108, 110, 99, 120, 93, 118, 106, 115, 146, 133, 140, 119, 95, 106, 118, 116], [116, 116, 117, 119, 122, 130, 139, 126, 114, 104, 95, 105, 116, 132, 149, 137, 125, 115, 105, 115, 125, 122, 120, 117, 115, 132, 150, 136, 122, 109, 97, 106, 116], [116, 111, 119, 109, 125, 114, 130, 110, 113, 93, 105, 96, 116, 151, 137, 159, 129, 151, 119, 144, 129, 114, 122, 113, 114, 99, 135, 129, 125, 110, 109, 91, 116], [116, 119, 122, 125, 129, 125, 121, 117, 113, 114, 115, 116, 117, 121, 125, 129, 134, 134, 134, 134, 134, 129, 124, 119, 114, 117, 121, 125, 129, 125, 122, 119, 116], [116, 87, 103, 139, 125, 97, 119, 109, 112, 132, 119, 120, 120, 121, 135, 127, 138, 119, 126, 148, 133, 105, 108, 85, 113, 142, 126, 138, 125, 132, 115, 118, 116], [116, 100, 85, 103, 121, 119, 118, 114, 111, 117, 123, 123, 124, 134, 145, 144, 143, 130, 118, 125, 133, 112, 92, 102, 113, 122, 132, 126, 121, 114, 108, 112, 116], [116, 124, 99, 97, 117, 119, 114, 114, 110, 110, 121, 149, 127, 159, 143, 179, 148, 107, 130, 126, 133, 93, 107, 115, 113, 111, 122, 138, 117, 121, 111, 108, 116], [116, 115, 114, 113, 113, 112, 111, 110, 110, 115, 120, 125, 131, 136, 142, 147, 153, 148, 143, 138, 133, 128, 123, 118, 113, 113, 113, 113, 114, 114, 115, 115, 116], [116, 107, 101, 93, 113, 85, 108, 98, 115, 147, 132, 117, 128, 129, 158, 133, 157, 181, 146, 172, 141, 107, 125, 148, 118, 131, 119, 116, 120, 100, 117, 93, 116], [116, 102, 89, 101, 113, 109, 106, 113, 120, 132, 144, 134, 125, 150, 175, 168, 162, 156, 150, 149, 149, 138, 127, 125, 123, 124, 125, 125, 126, 122, 119, 117, 116], [116, 119, 101, 114, 113, 106, 114, 123, 125, 160, 134, 114, 122, 169, 160, 153, 166, 144, 159, 183, 157, 115, 138, 104, 128, 102, 130, 134, 132, 151, 123, 129, 116], [116, 115, 114, 113, 113, 117, 122, 126, 131, 128, 125, 122, 119, 132, 145, 158, 171, 169, 168, 167, 166, 157, 149, 141, 133, 134, 135, 136, 138, 132, 127, 121, 116], [116, 120, 129, 139, 118, 151, 131, 116, 136, 165, 138, 147, 132, 104, 133, 170, 175, 216, 184, 192, 167, 178, 136, 138, 138, 117, 135, 114, 137, 113, 139, 146, 116], [116, 130, 145, 134, 123, 131, 140, 141, 142, 147, 152, 148, 145, 133, 122, 151, 180, 190, 200, 184, 168, 145, 123, 133, 143, 139, 135, 135, 136, 144, 152, 134, 116], [116, 119, 135, 146, 128, 147, 141, 154, 147, 184, 157, 173, 158, 124, 151, 174, 185, 195, 190, 197, 169, 154, 142, 169, 148, 148, 139, 121, 135, 129, 138, 100, 116], [116, 120, 125, 129, 134, 138, 143, 148, 153, 157, 162, 166, 171, 175, 180, 185, 190, 185, 180, 175, 171, 166, 162, 157, 153, 148, 143, 138, 134, 129, 125, 120, 116], [116, 91, 121, 142, 123, 117, 128, 155, 150, 139, 156, 200, 175, 200, 178, 174, 185, 157, 181, 206, 173, 150, 143, 128, 144, 151, 130, 129, 122, 97, 105, 88, 116], [116, 117, 118, 115, 112, 113, 114, 131, 148, 149, 150, 164, 179, 177, 176, 178, 180, 181, 183, 179, 175, 150, 125, 130, 136, 127, 118, 114, 110, 98, 86, 101, 116], [116, 118, 110, 110, 101, 92, 115, 143, 145, 136, 157, 143, 183, 180, 177, 216, 175, 141, 179, 201, 177, 148, 137, 158, 128, 121, 110, 123, 98, 110, 93, 122, 116], [116, 109, 103, 96, 90, 103, 116, 129, 143, 154, 165, 176, 187, 183, 179, 175, 171, 173, 175, 177, 179, 164, 149, 134, 120, 111, 103, 95, 87, 94, 101, 108, 116], [116, 126, 111, 103, 98, 100, 123, 120, 140, 169, 156, 199, 176, 208, 168, 166, 166, 166, 174, 139, 164, 127, 131, 114, 112, 126, 100, 97, 90, 90, 95, 117, 116], [116, 117, 119, 113, 107, 118, 130, 134, 138, 142, 147, 156, 165, 161, 158, 160, 162, 167, 173, 161, 149, 131, 113, 108, 104, 101, 98, 96, 94, 92, 90, 103, 116], [116, 139, 119, 110, 116, 99, 129, 134, 136, 109, 142, 119, 154, 154, 153, 156, 157, 158, 154, 132, 134, 98, 108, 100, 96, 98, 96, 117, 98, 92, 99, 130, 116], [116, 118, 120, 122, 125, 127, 129, 131, 134, 136, 138, 140, 143, 145, 148, 150, 153, 144, 136, 128, 120, 112, 104, 96, 88, 91, 95, 98, 102, 105, 109, 112, 116], [116, 93, 105, 108, 114, 122, 116, 110, 131, 104, 119, 101, 136, 108, 144, 147, 148, 167, 136, 132, 118, 102, 117, 99, 91, 108, 107, 117, 108, 88, 105, 116, 116], [116, 103, 91, 97, 103, 103, 103, 116, 129, 114, 100, 115, 130, 135, 140, 141, 143, 139, 136, 126, 117, 123, 130, 112, 95, 107, 120, 117, 115, 108, 102, 109, 116], [116, 99, 95, 108, 92, 112, 103, 100, 127, 93, 110, 90, 124, 150, 133, 166, 138, 152, 130, 133, 115, 143, 119, 123, 98, 115, 117, 108, 121, 99, 112, 94, 116], [116, 107, 99, 90, 82, 92, 103, 114, 125, 123, 121, 119, 118, 122, 126, 130, 134, 129, 124, 119, 114, 111, 108, 105, 102, 108, 115, 121, 128, 125, 122, 119, 116], [116, 97, 101, 75, 90, 88, 95, 83, 122, 105, 109, 115, 117, 126, 115, 141, 129, 129, 128, 122, 114, 112, 120, 112, 105, 92, 119, 98, 125, 122, 123, 143, 116], [116, 109, 103, 101, 99, 93, 87, 103, 120, 108, 97, 107, 117, 110, 104, 114, 125, 129, 133, 124, 115, 124, 133, 121, 109, 116, 124, 123, 122, 123, 125, 120, 116], [116, 87, 109, 101, 107, 121, 101, 95, 118, 114, 106, 87, 116, 111, 110, 96, 120, 107, 124, 96, 115, 127, 124, 94, 112, 108, 120, 112, 119, 146, 120, 110, 116], [116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116, 116]];
+
+    const gridSize = 33, hexRadius = 15;
+    const colSpacing = 1.5 * hexRadius, rowSpacing = Math.sqrt(3) * hexRadius;
+
+    const container = document.getElementById('map-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1, 5000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    const mapGroup = new THREE.Group();
+    scene.add(mapGroup);
+
+    let selectedTile = null;
+    let peaksTotal = 0, pitsTotal = 0;
+    let minHScore = Infinity, maxHScore = -Infinity;
+    let minLowHScore = Infinity, maxLowHScore = -Infinity;
+
+    function getNeighbors(c, r) {
+        return (c % 2 === 0) 
+            ? [[c, r-1], [c, r+1], [c-1, r], [c+1, r], [c-1, r-1], [c+1, r-1]]
+            : [[c, r-1], [c, r+1], [c-1, r], [c+1, r], [c-1, r+1], [c+1, r+1]];
+    }
+
+    function calculateHeightScore(c, r) {
+        const currentH = rawData[r][c];
+        let score = 0;
+        getNeighbors(c, r).forEach(([nc, nr]) => {
+            if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+                score += (currentH - rawData[nr][nc]);
+            } else {
+                score += (currentH - 116);
+            }
+        });
+        return score;
+    }
+
+    function isPeak(c, r) {
+        if (rawData[r][c] < 125) return false;
+        const ns = getNeighbors(c, r);
+        for(let [nc, nr] of ns) {
+            if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+                if (rawData[nr][nc] > rawData[r][c]) return false;
+            }
+        }
+        return true;
+    }
+
+    function isPit(c, r) {
+        if (rawData[r][c] < 125) return false;
+        const ns = getNeighbors(c, r);
+        for(let [nc, nr] of ns) {
+            if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+                if (rawData[nr][nc] < rawData[r][c]) return false;
+            }
+        }
+        return true;
+    }
+
+    function getTouchingLowland(c, r) {
+        if (rawData[r][c] < 125) return 0;
+        let count = 0;
+        getNeighbors(c, r).forEach(([nc, nr]) => {
+            if (nr < 0 || nr >= gridSize || nc < 0 || nc >= gridSize || rawData[nr][nc] <= 124) count++;
+        });
+        return count;
+    }
+
+    const pillarGeo = new THREE.CylinderGeometry(hexRadius * 0.99, hexRadius * 0.99, 1, 6);
+    pillarGeo.translate(0, 0.5, 0); pillarGeo.rotateY(Math.PI / 2);
+
+    const layout = [];
+    let highCount = 0, lowCount = 0;
+    for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+            const h = rawData[r][c];
+            let xPos = c * colSpacing, zPos = r * rowSpacing;
+            if (c % 2 === 1) zPos += rowSpacing / 2;
+            const p = { x: xPos, z: zPos, h: h, isLand: h >= 125, r: r, c: c };
+            p.touchingLow = p.isLand ? getTouchingLowland(c, r) : 0;
+            p.isPeak = isPeak(c, r); p.isPit = isPit(c, r);
+            p.heightScore = calculateHeightScore(c, r);
+            
+            if (p.isLand) {
+                if (p.heightScore < minHScore) minHScore = p.heightScore;
+                if (p.heightScore > maxHScore) maxHScore = p.heightScore;
+                highCount++;
+            } else {
+                if (p.heightScore < minLowHScore) minLowHScore = p.heightScore;
+                if (p.heightScore > maxLowHScore) maxLowHScore = p.heightScore;
+                lowCount++;
+            }
+            if(p.isPeak) peaksTotal++; if(p.isPit) pitsTotal++;
+            layout.push(p);
+        }
+    }
+
+    const hscoreSlider = document.getElementById('hscore-filter');
+    hscoreSlider.min = minHScore; hscoreSlider.max = maxHScore; hscoreSlider.value = minHScore;
+
+    const matLand = new THREE.MeshPhongMaterial({ flatShading: true });
+    const matLow = new THREE.MeshPhongMaterial({ flatShading: true });
+    const iLand = new THREE.InstancedMesh(pillarGeo, matLand, highCount);
+    const iLow = new THREE.InstancedMesh(pillarGeo, matLow, lowCount);
+    iLand.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(highCount * 3), 3);
+    iLow.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(lowCount * 3), 3);
+
+    const dummy = new THREE.Object3D();
+    const landLookup = [], lowLookup = [];
+    let lndIdx = 0, lowIdx = 0;
+
+    layout.forEach(p => {
+        dummy.position.set(p.x, 0, p.z);
+        dummy.scale.set(1, p.h * 0.6, 1);
+        dummy.updateMatrix();
+        if (p.isLand) {
+            iLand.setMatrixAt(lndIdx, dummy.matrix);
+            iLand.setColorAt(lndIdx, new THREE.Color(0x2dcc33));
+            landLookup.push(p); lndIdx++;
+        } else {
+            iLow.setMatrixAt(lowIdx, dummy.matrix);
+            iLow.setColorAt(lowIdx, new THREE.Color(0x808080));
+            lowLookup.push(p); lowIdx++;
+        }
+    });
+
+    const totalWidth = (gridSize - 1) * colSpacing, totalHeight = (gridSize - 1) * rowSpacing;
+    iLand.position.set(-totalWidth / 2, 0, -totalHeight / 2);
+    iLow.position.set(-totalWidth / 2, 0, -totalHeight / 2);
+    mapGroup.add(iLand, iLow);
+    mapGroup.rotation.y = Math.PI / 2;
+
+    let isRelief = false, isPeaks = false, isPits = false, isHeightScore = false, labelsOn = false;
+    const reliefBtn = document.getElementById('topo-btn'), peaksBtn = document.getElementById('peaks-btn');
+    const pitsBtn = document.getElementById('pits-btn'), hscoreBtn = document.getElementById('hscore-btn');
+    const coordsBtn = document.getElementById('coords-btn');
+    const slider = document.getElementById('side-filter'), filterLabel = document.getElementById('filter-label');
+    const hscoreContainer = document.getElementById('hscore-slider-cont'), hscoreLabel = document.getElementById('hscore-label');
+
+    peaksBtn.innerText = `SUMMIT PEAKS (${peaksTotal})`;
+    pitsBtn.innerText = `DEEP PITS (${pitsTotal})`;
+
+    function updateColors() {
+        const val = parseInt(slider.value);
+        filterLabel.innerText = val === -1 ? "COASTAL VIEW: OFF" : `COASTAL SIDES: ${val}`;
+        const hMin = parseInt(hscoreSlider.value);
+        hscoreLabel.innerText = hMin === parseInt(hscoreSlider.min) ? "MIN SCORE: ALL" : `MIN SCORE: ${hMin}`;
+
+        const cPeak = new THREE.Color(0xffff00), cPit = new THREE.Color(0xff0a0a);
+        const cSelect = new THREE.Color(0xffffff), cBase = new THREE.Color(0x2dcc33), cNeut = new THREE.Color(0xffa500);
+        
+        for (let i = 0; i < landLookup.length; i++) {
+            if (selectedTile && selectedTile.mesh === iLand && selectedTile.index === i) { iLand.setColorAt(i, cSelect); continue; }
+            const p = landLookup[i];
+            if (isHeightScore) {
+                if (p.heightScore < hMin) iLand.setColorAt(i, new THREE.Color(0x111111));
+                else {
+                    let col;
+                    if (p.heightScore > 0) col = cNeut.clone().lerp(cPeak, Math.min(p.heightScore/maxHScore, 1));
+                    else col = cNeut.clone().lerp(cPit, Math.min(Math.abs(p.heightScore)/Math.abs(minHScore), 1));
+                    iLand.setColorAt(i, col);
+                }
+            }
+            else if (isPeaks && p.isPeak) iLand.setColorAt(i, cPeak);
+            else if (isPits && p.isPit) iLand.setColorAt(i, cPit);
+            else if (val !== -1 && p.touchingLow === val) iLand.setColorAt(i, new THREE.Color(0xe3c69a));
+            else if (isRelief) iLand.setColorAt(i, new THREE.Color(0x0fd90f).lerp(new THREE.Color(0x1b4e20), (p.h - 125) / 91));
+            else iLand.setColorAt(i, cBase);
+        }
+        iLand.instanceColor.needsUpdate = true;
+        
+        const lowStart = new THREE.Color(0x0722f0), lowEnd = new THREE.Color(0x0ffbff);
+        for (let j = 0; j < lowLookup.length; j++) {
+            if (selectedTile && selectedTile.mesh === iLow && selectedTile.index === j) { iLow.setColorAt(j, cSelect); continue; }
+            const p = lowLookup[j];
+            if (isHeightScore) {
+                const t = (p.heightScore - minLowHScore) / (maxLowHScore - minLowHScore);
+                iLow.setColorAt(j, lowStart.clone().lerp(lowEnd, t));
+            }
+            else if (isRelief) iLow.setColorAt(j, new THREE.Color(0x303030).lerp(new THREE.Color(0xa3a3a3), (p.h - 75) / 49));
+            else iLow.setColorAt(j, new THREE.Color(0x808080));
+        }
+        iLow.instanceColor.needsUpdate = true;
+    }
+
+    slider.addEventListener('input', updateColors);
+    hscoreSlider.addEventListener('input', updateColors);
+
+    reliefBtn.addEventListener('click', () => { isRelief = !isRelief; reliefBtn.classList.toggle('active'); updateColors(); });
+    peaksBtn.addEventListener('click', () => { isPeaks = !isPeaks; peaksBtn.classList.toggle('active'); updateColors(); });
+    pitsBtn.addEventListener('click', () => { isPits = !isPits; pitsBtn.classList.toggle('active'); updateColors(); });
+    hscoreBtn.addEventListener('click', () => { 
+        isHeightScore = !isHeightScore;
+        hscoreBtn.classList.toggle('active');
+        hscoreSlider.classList.toggle('hscore-gradient', isHeightScore);
+        hscoreContainer.style.display = isHeightScore ? 'block' : 'none'; 
+        updateColors(); 
+    });
+
+    const labelSprites = [];
+    function makeLabel(txt, x, z) {
+        const canv = document.createElement('canvas'); const ctx = canv.getContext('2d');
+        canv.width = 64; canv.height = 64; ctx.fillStyle = 'white'; ctx.font = '32px monospace'; ctx.textAlign = 'center'; ctx.fillText(txt, 32, 45);
+        const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canv) }));
+        spr.position.set(x, 20, z); spr.scale.set(25, 25, 1); return spr;
+    }
+    for (let i = 0; i < gridSize; i++) {
+        const x = i * colSpacing - totalWidth/2, z = i * rowSpacing - totalHeight/2, p = 60;
+        labelSprites.push(makeLabel(i, x, totalHeight/2+p), makeLabel(i, x, -totalHeight/2-p), makeLabel(i, -totalWidth/2-p, z), makeLabel(i, totalWidth/2+p, z));
+    }
+    coordsBtn.addEventListener('click', () => { labelsOn = !labelsOn; coordsBtn.classList.toggle('active'); labelSprites.forEach(s => labelsOn ? mapGroup.add(s) : mapGroup.remove(s)); });
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(100, 500, 100); scene.add(sun);
+    camera.position.set(0, 900, 900); controls.update();
+
+    const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2(), popup = document.getElementById('info-popup');
+    const popC = document.getElementById('popup-coords'), popH = document.getElementById('popup-height'), popS = document.getElementById('popup-status'), popHS = document.getElementById('popup-hscore');
+    let sX, sY;
+
+    window.addEventListener('mousedown', (e) => { sX = e.clientX; sY = e.clientY; });
+    window.addEventListener('mouseup', (e) => {
+        if (e.target.closest('#sidebar') || e.target.id === 'menu-toggle' || e.target.closest('.info-icon') || e.target.closest('#modal-content')) return;
+        if (Math.abs(e.clientX - sX) > 5 || Math.abs(e.clientY - sY) > 5) return;
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hL = raycaster.intersectObject(iLand), hW = raycaster.intersectObject(iLow);
+        const hit = hL.length > 0 ? { ...hL[0], mesh: iLand, list: landLookup } : (hW.length > 0 ? { ...hW[0], mesh: iLow, list: lowLookup } : null);
+        
+        if (hit) {
+            const p = hit.list[hit.instanceId];
+            selectedTile = { mesh: hit.mesh, index: hit.instanceId };
+            popup.style.display = 'block';
+            popC.innerText = `TILE: ${p.c}, ${p.r}`;
+            popH.innerText = `HEIGHT: ${p.h}`;
+            popHS.innerText = `HEIGHT SCORE: ${p.heightScore}`;
+            popS.innerText = p.isLand ? `OWNABLE TILE` : `COMMON LAND`;
+            updateColors();
+        } else {
+            selectedTile = null; popup.style.display = 'none'; updateColors();
+        }
+    });
+
+ function animate() {
+    requestAnimationFrame(animate);
+    
+    // Main Map
+    controls.update();
+    renderer.render(scene, camera);
+    
+    // Boundary Pop-up (Only renders if open)
+    if (hexModal.style.display === 'flex') {
+        hexControls.update();
+        hexRenderer.render(hexScene, hexCamera);
+    }
+}
+animate();
+</script>
+</body>
+</html>
