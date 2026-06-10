@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Etheria Builder - Wrap-Around Edition</title>
+    <style>
+        body { margin: 0; background: #000; color: #00ff66; font-family: monospace; overflow: hidden; }
+        #ui-container { position: absolute; top: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .panel { background: rgba(0, 15, 0, 0.85); border: 1px solid #00ff66; padding: 15px; pointer-events: auto; width: 300px; box-shadow: 0 0 15px rgba(0, 255, 102, 0.2); }
+        h2 { margin: 0 0 10px 0; font-size: 14px; letter-spacing: 2px; border-bottom: 1px solid #004411; padding-bottom: 5px; }
+        textarea { width: 100%; height: 200px; background: #000; color: #00ff66; border: 1px solid #004411; font-family: 'Courier New', monospace; font-size: 12px; padding: 8px; box-sizing: border-box; outline: none; }
+        button { width: 100%; background: #00ff66; color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; text-transform: uppercase; }
+        button:hover { background: #fff; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 11px; color: #88ffaa; margin-top: 5px; }
+        #coords { color: #fff; font-weight: bold; margin-top: 5px; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="panel">
+            <h2>ETHERIA BUILDER</h2>
+            <div class="stat-row"><span>GRID (TORUS WRAP)</span><span></span></div>
+            <div id="coords">(0, 0, 0) - Center</div>
+            <div class="stat-row" id="build-stats">Blocks: 0 | Hexes: 0</div>
+        </div>
+
+        <div class="panel">
+            <div class="stat-row">BUILD MANIFEST (which, x, y, z, color)</div>
+            <textarea id="buildData" placeholder="0, 0, 0, 0, -128">0, 0, 0, 0, 0</textarea>
+            <button onclick="renderAll()">Render Build</button>
+            <button onclick="countBlocks()">Block Count</button>
+        </div>
+    </div>
+
+<script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // Data libraries
+    const library = [["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7"],["0","0","0","0","1","0","1","2","0","1","3","0","2","4","0","2","5","0","3","6","0","3","7","0"],["0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0","0"],["0","0","0","-1","1","0","-1","2","0","-2","3","0","-2","4","0","-3","5","0","-3","6","0","-4","7","0"],["0","0","0","1","0","0","1","1","0","2","1","0","3","2","0","4","2","0","4","3","0","5","3","0"],["0","0","0","-1","0","0","-2","1","0","-3","1","0","-3","2","0","-4","2","0","-5","3","0","-6","3","0"],["0","0","0","1","0","0","0","0","1","1","0","1","0","0","2","1","0","2","0","0","3","1","0","3"],["0","0","0","0","1","0","0","0","1","0","1","1","0","0","2","0","1","2","0","0","3","0","1","3"],["0","0","0","-1","1","0","0","0","1","-1","1","1","0","0","2","-1","1","2","0","0","3","-1","1","3"],["0","0","0","0","1","0","1","2","0","1","3","0","0","0","1","0","1","1","1","2","1","1","3","1"],["0","0","0","1","0","0","2","0","0","3","0","0","0","0","1","1","0","1","2","0","1","3","0","1"],["0","0","0","-1","1","0","-1","2","0","-2","3","0","0","0","1","-1","1","1","-1","2","1","-2","3","1"],["0","0","0","1","0","0","1","1","0","2","1","0","0","0","1","1","0","1","1","1","1","2","1","1"],["0","0","0","-1","0","0","-2","1","0","-3","1","0","0","0","1","-1","0","1","-2","1","1","-3","1","1"],["0","0","0","0","1","0","0","2","0","0","3","0","0","4","0","0","5","0","0","6","0","0","7","0"],["0","0","0","-1","1","0","0","2","0","-1","3","0","0","4","0","-1","5","0","0","6","0","-1","7","0"],["0","0","0","0","1","0","0","2","0","0","3","0","0","0","1","0","1","1","0","2","1","0","3","1"],["0","0","0","-1","1","0","0","2","0","-1","3","0","0","0","1","-1","1","1","0","2","1","-1","3","1"],["0","0","0","0","1","0","0","1","1","1","2","1","1","2","2","1","3","2","1","3","3","2","4","3"],["0","0","0","1","0","0","1","0","1","2","0","1","2","0","2","3","0","2","3","0","3","4","0","3"],["0","0","0","0","-1","0","0","-1","1","1","-2","1","1","-2","2","1","-3","2","1","-3","3","2","-4","3"],["0","0","0","-1","-1","0","-1","-1","1","-1","-2","1","-1","-2","2","-2","-3","2","-2","-3","3","-2","-4","3"],["0","0","0","-1","0","0","-1","0","1","-2","0","1","-2","0","2","-3","0","2","-3","0","3","-4","0","3"],["0","0","0","-1","1","0","-1","1","1","-1","2","1","-1","2","2","-2","3","2","-2","3","3","-2","4","3"],["0","0","0","0","0","1","0","0","2","0","1","2","1","2","2","1","3","2","1","3","1","1","3","0"],["0","0","0","0","0","1","0","0","2","1","0","2","2","0","2","3","0","2","3","0","1","3","0","0"],["0","0","0","0","0","1","0","0","2","0","-1","2","1","-2","2","1","-3","2","1","-3","1","1","-3","0"],["0","0","0","0","0","1","0","0","2","1","0","2","1","1","2","1","2","2","1","2","1","1","2","0"],["0","0","0","0","0","1","0","0","2","-1","-1","2","0","-2","2","1","-2","2","1","-2","1","1","-2","0"],["0","0","0","0","0","1","0","0","2","-1","0","2","-2","-1","2","-1","-2","2","-1","-2","1","-1","-2","0"],["0","0","0","0","0","1","0","0","2","0","1","2","0","2","2","-1","2","2","-1","2","1","-1","2","0"],["0","0","0","0","0","1","0","0","2","0","0","3","0","0","4","-1","1","0","-1","-1","0","1","0","0"]];
+    const colors = ["000000","000033","000066","000099","0000CC","0000FF","003300","003333","003366","003399","0033CC","0033FF","006600","006633","006666","006699","0066CC","0066FF","009900","009933","009966","009999","0099CC","0099FF","00CC00","00CC33","00CC66","00CC99","00CCCC","00CCFF","00FF00","00FF33","00FF66","00FF99","00FFCC","00FFFF","330000","330033","330066","330099","3300CC","3300FF","333300","333333","333366","333399","3333CC","3333FF","336600","336633","336666","336699","3366CC","3366FF","339900","339933","339966","339999","3399CC","3399FF","33CC00","33CC33","33CC66","33CC99","33CCCC","33CCFF","33FF00","33FF33","33FF66","33FF99","33FFCC","33FFFF","660000","660033","660066","660099","6600CC","6600FF","663300","663333","663366","663399","6633CC","6633FF","666600","666633","666666","666699","6666CC","6666FF","669900","669933","669966","669999","6699CC","6699FF","66CC00","66CC33","66CC66","66CC99","66CCCC","66CCFF","66FF00","66FF33","66FF66","66FF99","66FFCC","66FFFF","990000","990033","990066","990099","9900CC","9900FF","993300","993333","993366","993399","9933CC","9933FF","996600","996633","996666","996699","9966CC","9966FF","999900","999933","999966","999999","9999CC","9999FF","99CC00","99CC33","99CC66","99CC99","99CCCC","99CCFF","99FF00","99FF33","99FF66","99FF99","99FFCC","99FFFF","CC0000","CC0033","CC0066","CC0099","CC00CC","CC00FF","CC3300","CC3333","CC3366","CC3399","CC33CC","CC33FF","CC6600","CC6633","CC6666","CC6699","CC66CC","CC66FF","CC9900","CC9933","CC9966","CC9999","CC99CC","CC99FF","CCCC00","CCCC33","CCCC66","CCCC99","CCCCCC","CCCCFF","CCFF00","CCFF33","CCFF66","CCFF99","CCFFCC","CCFFFF","FF0000","FF0033","FF0066","FF0099","FF00CC","FF00FF","FF3300","FF3333","FF3366","FF3399","FF33CC","FF33FF","FF6600","FF6633","FF6666","FF6699","FF66CC","FF66FF","FF9900","FF9933","FF9966","FF9999","FF99CC","FF99FF","FFCC00","FFCC33","FFCC66","FFCC99","FFCCCC","FFCCFF","FFFF00","FFFF33","FFFF66","FFFF99","FFFFCC","FFFFFF"];
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
+    camera.position.set(0, 300, 300);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+    const hexRadius = 5;
+    const hexWidth = Math.sqrt(3) * hexRadius;
+    const hexHeight = 1.5 * hexRadius;
+    const tileGroup = new THREE.Group();
+    const buildGroup = new THREE.Group();
+    scene.add(tileGroup, buildGroup);
+
+    // --- HELPER: SIGNED 8-BIT WRAP ---
+    function wrapSigned(val) {
+        let res = (val + 128) % 256;
+        if (res < 0) res += 256;
+        return res - 128;
+    }
+
+    function isHexValid(x, y) {
+        const absY = Math.abs(y);
+        if (absY > 66) return false;
+        if (absY <= 33) {
+            if (y % 2 !== 0) return (x >= -50 && x <= 49);
+            return (x >= -49 && x <= 49);
+        }
+        const distanceToPole = absY - 33;
+        const shrink = Math.floor(distanceToPole * 1.5);
+        let leftWall = -50 + shrink;
+        let rightWall = 49 - shrink;
+        return (y % 2 !== 0) ? (x >= leftWall && x <= rightWall) : (x >= leftWall + 1 && x <= rightWall);
+    }
+
+    const tileGeo = new THREE.CircleGeometry(hexRadius * 0.98, 6);
+    const standardMat = new THREE.MeshBasicMaterial({ color: 0x001a00, side: THREE.DoubleSide });
+    const goldMat = new THREE.MeshBasicMaterial({ color: 0xFFD700, side: THREE.DoubleSide });
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x00ff66, transparent: true, opacity: 0.1 });
+
+    function createGround() {
+        for (let y = -66; y <= 66; y++) {
+            for (let x = -60; x <= 60; x++) {
+                if (isHexValid(x, y)) {
+                    const mesh = new THREE.Mesh(tileGeo, (x === 0 && y === 0) ? goldMat : standardMat);
+                    let xPos = -x * hexWidth;
+                    if (Math.abs(y) % 2 !== 0) xPos -= hexWidth / 2;
+                    let zPos = y * hexHeight;
+                    mesh.position.set(-xPos, 0, -zPos);
+                    mesh.rotation.x = -Math.PI / 2;
+                    mesh.rotation.z = Math.PI / 6;
+                    mesh.userData = { x, y };
+                    const line = new THREE.LineSegments(new THREE.EdgesGeometry(tileGeo), wireMat);
+                    line.position.copy(mesh.position);
+                    line.rotation.copy(mesh.rotation);
+                    tileGroup.add(mesh, line);
+                }
+            }
+        }
+    }
+
+    const blockHexGeo = new THREE.CylinderGeometry(hexRadius * .99, hexRadius * .99, hexRadius, 6);
+
+window.renderAll = function() {
+    buildGroup.clear();
+    const raw = document.getElementById('buildData').value;
+    const lines = raw.split('\n');
+    let blocksCount = 0;
+
+    lines.forEach(line => {
+        if (!line.trim() || line.startsWith('//')) return;
+        const parts = line.split(',').map(n => parseInt(n.trim()));
+        if (parts.length < 5) return;
+        const [which, ax, ay, az, colorIdx] = parts;
+
+        if (library[which]) {
+            blocksCount++;
+            const arrayIndex = colorIdx + 128; 
+            const hexString = colors[arrayIndex] || "FFFFFF";
+            const colorHex = '#' + hexString;
+
+            const mat = new THREE.MeshPhongMaterial({ color: colorHex, shininess: 30 });
+            const edgeMat = new THREE.LineBasicMaterial({ 
+                color: new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.3), 
+                transparent: true, 
+                opacity: 0.15
+            });
+
+            library[which].forEach((_, i, data) => {
+                if (i % 3 === 0) {
+                    let q = parseInt(data[i]);
+                    let r = parseInt(data[i+1]);
+                    let z = parseInt(data[i+2]);
+
+                    // 1. Calculate Base Wrapped Coordinates
+                    let rawX = q + ax;
+                    let rawY = r + ay;
+                    if (Math.abs(ay) % 2 !== 0 && Math.abs(rawY) % 2 === 0) rawX += 1;
+
+                    const finalX = wrapSigned(rawX);
+                    const finalY = wrapSigned(rawY);
+
+                    // 2. TORUS RENDERING: 
+                    // To handle the 4-corner wrap, we check if the hex needs to be 
+                    // drawn at its primary position AND its "mirror" positions.
+                    const xOffsets = [0, (finalX < 0 ? 256 : -256)];
+                    const yOffsets = [0, (finalY < 0 ? 256 : -256)];
+
+                    // We iterate through potential wrap-around positions (Primary, X-Wrap, Y-Wrap, XY-Wrap)
+                    for (let ox of xOffsets) {
+                        for (let oy of yOffsets) {
+                            // Only draw the "ghost" if it's actually within the visible grid bounds
+                            // (Etheria grid is roughly -50 to 50, but we check 128 for full 8-bit coverage)
+                            let tx = finalX + ox;
+                            let ty = finalY + oy;
+
+                            // Convert grid to 3D Space
+                            let xPos = -(-tx * hexWidth);
+                            if (Math.abs(ty) % 2 !== 0) xPos += hexWidth / 2;
+                            let zPos = -(ty * hexHeight);
+                            const yPos = (z + az) * hexRadius + (hexRadius / 2);
+
+                            // We only render if the wrapped coordinate is "reasonably" close to the center 
+                            // to avoid rendering 4 copies of every single block.
+                            if (Math.abs(tx) < 130 && Math.abs(ty) < 130) {
+                                const mesh = new THREE.Mesh(blockHexGeo, mat);
+                                mesh.position.set(xPos, yPos, zPos);
+                                
+                                const edges = new THREE.EdgesGeometry(blockHexGeo);
+                                const lineObj = new THREE.LineSegments(edges, edgeMat);
+                                lineObj.position.copy(mesh.position);
+
+                                buildGroup.add(mesh, lineObj);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+    document.getElementById('build-stats').innerText = `Blocks: ${blocksCount} | Hexes: ${blocksCount * 8}`;
+};
+
+// --- NEW FUNCTION: TRACK AND COUNT BLOCK TYPES ---
+window.countBlocks = function() {
+    const raw = document.getElementById('buildData').value;
+    const lines = raw.split('\n');
+    const counts = {};
+
+    lines.forEach(line => {
+        if (!line.trim() || line.startsWith('//')) return;
+        const parts = line.split(',').map(n => parseInt(n.trim()));
+        if (parts.length < 1 || isNaN(parts[0])) return;
+        
+        const which = parts[0];
+        if (library[which]) {
+            counts[which] = (counts[which] || 0) + 1;
+        }
+    });
+
+    // Format the output string
+    const keys = Object.keys(counts).sort((a, b) => a - b);
+    if (keys.length === 0) {
+        alert("No valid blocks found in the manifest.");
+        return;
+    }
+
+    let report = "--- BLOCK TYPE COUNT ---\n";
+    keys.forEach(key => {
+        report += `Block ID [${key}]: ${counts[key]}\n`;
+    });
+    
+    alert(report);
+};
+
+    createGround();
+    renderAll();
+
+    function animate() { 
+        requestAnimationFrame(animate); 
+        controls.update(); 
+        renderer.render(scene, camera); 
+    }
+    animate();
+
+    window.onresize = () => { 
+        camera.aspect = window.innerWidth / window.innerHeight; 
+        camera.updateProjectionMatrix(); 
+        renderer.setSize(window.innerWidth, window.innerHeight); 
+    };
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    window.addEventListener('click', (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hit = raycaster.intersectObjects(tileGroup.children).find(i => i.object.type === "Mesh");
+        if (hit) document.getElementById('coords').innerText = `(${hit.object.userData.x}, ${hit.object.userData.y}, 0)`;
+    });
+</script>
+</body>
+</html>
